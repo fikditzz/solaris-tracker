@@ -1,4 +1,7 @@
 window.currentPanelId = localStorage.getItem('panelId') || 'panel1';
+let currentPage = 1;
+const itemsPerPage = 7;
+let currentFilteredData = [];
 
 function switchPanel(panelId) {
     window.currentPanelId = panelId;
@@ -141,11 +144,31 @@ function initCharts() {
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } }
     });
 }
-function renderLogs(data) {
+window.renderPage = function(page) {
+    if(page < 1) return;
+    renderLogs(currentFilteredData, page);
+};
+
+function renderLogs(data, page = 1) {
+    currentFilteredData = data;
+    currentPage = page;
+    
     const tbody = document.getElementById('log-table-body');
     if(!tbody) return;
     tbody.innerHTML = '';
-    data.forEach(log => {
+    
+    const totalItems = data.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+    
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+    
+    const startIdx = (currentPage - 1) * itemsPerPage;
+    const endIdx = Math.min(startIdx + itemsPerPage, totalItems);
+    
+    const pageData = data.slice(startIdx, endIdx);
+    
+    pageData.forEach(log => {
         let badgeClass = 'badge-optimal';
         let trStyle = '';
         let vClass = '';
@@ -168,6 +191,63 @@ function renderLogs(data) {
             </tr>
         `;
     });
+    
+    renderPagination(totalItems, totalPages, startIdx, endIdx);
+}
+
+function renderPagination(totalItems, totalPages, startIdx, endIdx) {
+    const info = document.getElementById('pagination-info');
+    const controls = document.getElementById('pagination-controls');
+    
+    if(info) {
+        if(totalItems === 0) info.innerText = "Showing 0 entries";
+        else info.innerText = `Showing ${startIdx + 1} to ${endIdx} of ${totalItems.toLocaleString()} entries`;
+    }
+    
+    if(controls) {
+        controls.innerHTML = '';
+        if(totalItems === 0) return;
+        
+        let html = '';
+        
+        // Prev button
+        if(currentPage === 1) {
+            html += `<li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>`;
+        } else {
+            html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(${currentPage - 1}); return false;">&laquo;</a></li>`;
+        }
+        
+        // Page numbers
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, currentPage + 2);
+        
+        if (startPage > 1) {
+            html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(1); return false;">1</a></li>`;
+            if (startPage > 2) html += `<li class="page-item disabled"><a class="page-link text-dark" href="#">...</a></li>`;
+        }
+        
+        for(let i = startPage; i <= endPage; i++) {
+            if(i === currentPage) {
+                html += `<li class="page-item active"><a class="page-link bg-warning border-warning text-dark" href="#">${i}</a></li>`;
+            } else {
+                html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(${i}); return false;">${i}</a></li>`;
+            }
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += `<li class="page-item disabled"><a class="page-link text-dark" href="#">...</a></li>`;
+            html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(${totalPages}); return false;">${totalPages}</a></li>`;
+        }
+        
+        // Next button
+        if(currentPage === totalPages) {
+            html += `<li class="page-item disabled"><a class="page-link" href="#">&raquo;</a></li>`;
+        } else {
+            html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(${currentPage + 1}); return false;">&raquo;</a></li>`;
+        }
+        
+        controls.innerHTML = html;
+    }
 }
 
 async function populateLogs() {

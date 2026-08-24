@@ -682,16 +682,10 @@
                           </table>
                       </div>
                       <div class="p-3 border-top d-flex justify-content-between align-items-center bg-light rounded-bottom">
-                          <div class="text-sm text-muted">Showing 1 to 7 of 1,024 entries</div>
-                          <ul class="pagination pagination-sm mb-0">
-                              <li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>
-                              <li class="page-item active"><a class="page-link bg-warning border-warning text-dark" href="#">1</a></li>
-                              <li class="page-item"><a class="page-link text-dark" href="#">2</a></li>
-                              <li class="page-item"><a class="page-link text-dark" href="#">3</a></li>
-                              <li class="page-item disabled"><a class="page-link text-dark" href="#">...</a></li>
-                              <li class="page-item"><a class="page-link text-dark" href="#">146</a></li>
-                              <li class="page-item"><a class="page-link text-dark" href="#">&raquo;</a></li>
+                          <div class="text-sm text-muted" id="pagination-info">Showing 0 entries</div>
+                          <ul class="pagination pagination-sm mb-0" id="pagination-controls">
                           </ul>
+                      </div>
                       </div>
                   </div>
              </div>
