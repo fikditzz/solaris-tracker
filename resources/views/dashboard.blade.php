@@ -686,7 +686,6 @@
                           <ul class="pagination pagination-sm mb-0" id="pagination-controls">
                           </ul>
                       </div>
-                      </div>
                   </div>
              </div>
         </main>

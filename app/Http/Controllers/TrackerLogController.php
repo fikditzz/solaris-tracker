@@ -31,6 +31,7 @@ class TrackerLogController extends Controller
                 'motor2_load' => 'nullable|numeric',
                 'tracking_mode' => 'nullable|string',
                 'weather_status' => 'nullable|string',
+                'created_at' => 'nullable|date',
             ]);
 
             

@@ -16,6 +16,6 @@ class TrackerLog extends Model
         'azimuth', 'elevation', 
         'ldr_nw', 'ldr_ne', 'ldr_sw', 'ldr_se',
         'motor1_load', 'motor2_load',
-        'tracking_mode', 'weather_status'
+        'tracking_mode', 'weather_status', 'created_at'
     ];
 }
