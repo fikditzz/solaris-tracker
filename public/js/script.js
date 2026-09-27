@@ -280,6 +280,19 @@ function updateCharts(data) {
     let current = chartData.map(log => log.current);
     let power = chartData.map(log => log.power_output);
     
+    if(chartInstances.dashPower) {
+        chartInstances.dashPower.data.labels = labels;
+        chartInstances.dashPower.data.datasets[0].data = power;
+        chartInstances.dashPower.update();
+    }
+    
+    if(chartInstances.dashVA) {
+        chartInstances.dashVA.data.labels = labels;
+        chartInstances.dashVA.data.datasets[0].data = voltage;
+        chartInstances.dashVA.data.datasets[1].data = current;
+        chartInstances.dashVA.update();
+    }
+    
     if(chartInstances.anaVA) {
         chartInstances.anaVA.data.labels = labels;
         chartInstances.anaVA.data.datasets[0].data = voltage;
@@ -404,18 +417,6 @@ async function fetchApiData() {
                     }
                 });
             });
-            if(chartInstances.dashPower) {
-                let pData = chartInstances.dashPower.data.datasets[0].data;
-                pData.shift(); pData.push(simState.power);
-                chartInstances.dashPower.update('none'); 
-            }
-            if(chartInstances.dashVA) {
-                let dataV = chartInstances.dashVA.data.datasets[0].data;
-                let dataA = chartInstances.dashVA.data.datasets[1].data;
-                dataV.shift(); dataV.push(simState.voltage);
-                dataA.shift(); dataA.push(simState.current);
-                chartInstances.dashVA.update('none');
-            }
         }
     } catch (error) {
         console.error("Gagal mengambil data dari API: ", error);
