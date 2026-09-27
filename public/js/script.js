@@ -171,7 +171,7 @@ function renderLogs(data, page = 1) {
     
     const pageData = data.slice(startIdx, endIdx);
     
-    pageData.forEach(log => {
+    pageData.forEach((log, index) => {
         let badgeClass = 'badge-optimal';
         let trStyle = '';
         let vClass = '';
@@ -183,7 +183,7 @@ function renderLogs(data, page = 1) {
         let timeStr = dateObj.toLocaleString('en-CA', { timeZone: 'Asia/Makassar', hour12: false }).replace(',', '');
         
         tbody.innerHTML += `
-            <tr style="${trStyle}">
+            <tr style="${trStyle} animation: fadeIn 0.4s ease forwards; animation-delay: ${index * 0.05}s; opacity: 0;">
                 <td class="text-start ps-4">${timeStr}</td>
                 <td class="fw-semibold">Node-${log.id}</td>
                 <td class="${vClass}">${log.voltage}</td>
