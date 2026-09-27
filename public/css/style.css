@@ -319,3 +319,4 @@ body, .card-custom, .bg-light, .bg-white, .text-dark, .text-muted {
     border-color: var(--border-color) !important;
 }
 
+@keyframes fadeOpacity { from { opacity: 0; } to { opacity: 1; } }
