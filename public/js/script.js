@@ -50,7 +50,7 @@ function switchPanel(panelId) {
     } else {
         if(titleEl) titleEl.innerText = "Dual-Axis Tracker Array";
         if(dashTrackType) dashTrackType.innerText = "Dual-Axis Tracking Active";
-        if(algorithmType) algorithmType.innerText = "Astronomical + LDR";
+        if(algorithmType) algorithmType.innerText = "LDR Sensors";
         if(document.getElementById('panelDropdownText')) document.getElementById('panelDropdownText').innerText = "Array Alpha (Dual Axis)";
         if(document.getElementById('panelSelector')) document.getElementById('panelSelector').value = 'panel1';
         
