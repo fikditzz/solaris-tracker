@@ -25,10 +25,12 @@ function switchPanel(panelId) {
     let dashElMapCol = document.getElementById('dash-elevation-map-col');
     let dashAzValCol = document.getElementById('dash-azimuth-val-col');
     let dashElValCol = document.getElementById('dash-elevation-val-col');
+    let algorithmType = document.getElementById('algorithm-type');
 
     if(panelId === 'panel2') {
         if(titleEl) titleEl.innerText = "Single-Axis Tracker Array";
         if(dashTrackType) dashTrackType.innerText = "Single-Axis Tracking Active";
+        if(algorithmType) algorithmType.innerText = "Astronomical Algorithm";
         if(document.getElementById('panelDropdownText')) document.getElementById('panelDropdownText').innerText = "Array Beta (Single Axis)";
         if(document.getElementById('panelSelector')) document.getElementById('panelSelector').value = 'panel2';
         
@@ -48,6 +50,7 @@ function switchPanel(panelId) {
     } else {
         if(titleEl) titleEl.innerText = "Dual-Axis Tracker Array";
         if(dashTrackType) dashTrackType.innerText = "Dual-Axis Tracking Active";
+        if(algorithmType) algorithmType.innerText = "Astronomical + LDR";
         if(document.getElementById('panelDropdownText')) document.getElementById('panelDropdownText').innerText = "Array Alpha (Dual Axis)";
         if(document.getElementById('panelSelector')) document.getElementById('panelSelector').value = 'panel1';
         
@@ -534,12 +537,23 @@ function exportCSV(type) {
         return;
     }
     
+    let isPanel1 = window.currentPanelId === 'panel1';
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Timestamp,Azimuth,Elevation,LDR NW,LDR NE,LDR SW,LDR SE,Mode,Command\n';
+    
+    if (isPanel1) {
+        csvContent += 'Timestamp,Azimuth,Elevation,Voltage,Current,LDR NW,LDR NE,LDR SW,LDR SE,Mode,Command\n';
+    } else {
+        csvContent += 'Timestamp,Azimuth,Elevation,Voltage,Current,Mode,Command\n';
+    }
     
     window.logDataCache.forEach(row => {
         let ts = row.created_at ? new Date(row.created_at).toLocaleString('en-US', { timeZone: 'Asia/Makassar' }) : 'N/A';
-        let rowStr = `${ts},${row.azimuth},${row.elevation},${row.ldr_nw},${row.ldr_ne},${row.ldr_sw},${row.ldr_se},${row.tracking_mode || 'Auto'},${row.manual_command || 'None'}`;
+        let rowStr = '';
+        if (isPanel1) {
+            rowStr = `${ts},${row.azimuth},${row.elevation},${row.voltage},${row.current},${row.ldr_nw || 0},${row.ldr_ne || 0},${row.ldr_sw || 0},${row.ldr_se || 0},${row.tracking_mode || 'Auto'},${row.manual_command || 'None'}`;
+        } else {
+            rowStr = `${ts},${row.azimuth},${row.elevation},${row.voltage},${row.current},${row.tracking_mode || 'Auto'},${row.manual_command || 'None'}`;
+        }
         csvContent += rowStr + '\n';
     });
     

@@ -427,7 +427,7 @@
                               </div>
                              <div class="text-xs text-muted mb-1">ALGORITHM</div>
                              <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
-                                 <div class="fw-semibold">Astronomical + LDR</div>
+                                 <div id="algorithm-type" class="fw-semibold">Astronomical + LDR</div>
                                  <span class="material-symbols-rounded text-warning">memory</span>
                              </div>
                              <div class="text-xs text-muted mb-1">LAST CALIBRATION</div>
