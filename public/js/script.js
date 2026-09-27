@@ -547,7 +547,7 @@ function exportCSV(type) {
     }
     
     window.logDataCache.forEach(row => {
-        let ts = row.created_at ? new Date(row.created_at).toLocaleString('en-US', { timeZone: 'Asia/Makassar' }) : 'N/A';
+        let ts = row.created_at ? new Date(row.created_at).toLocaleString('en-US', { timeZone: 'Asia/Makassar' }).replace(',', '') : 'N/A';
         let rowStr = '';
         if (isPanel1) {
             rowStr = `${ts},${row.azimuth},${row.elevation},${row.voltage},${row.current},${row.ldr_nw || 0},${row.ldr_ne || 0},${row.ldr_sw || 0},${row.ldr_se || 0},${row.tracking_mode || 'Auto'},${row.manual_command || 'None'}`;
