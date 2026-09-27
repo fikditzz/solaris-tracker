@@ -418,6 +418,30 @@ async function fetchApiData() {
                 });
             });
         }
+        
+        let statusBadge = document.getElementById('system-status-badge');
+        let statusDot = document.getElementById('system-status-dot');
+        let statusText = document.getElementById('system-status-text');
+        
+        if (statusBadge && statusDot && statusText) {
+            let isOnline = false;
+            if (json.success && json.data && json.data.created_at) {
+                let diffSecs = (new Date() - new Date(json.data.created_at)) / 1000;
+                if (diffSecs <= 180) isOnline = true;
+            }
+            
+            if (isOnline) {
+                statusBadge.style.backgroundColor = 'rgba(34, 197, 94, 0.1)';
+                statusBadge.style.color = '#22C55E';
+                statusDot.style.backgroundColor = '#22C55E';
+                statusText.innerText = 'System Active';
+            } else {
+                statusBadge.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                statusBadge.style.color = '#EF4444';
+                statusDot.style.backgroundColor = '#EF4444';
+                statusText.innerText = 'System Offline';
+            }
+        }
     } catch (error) {
         console.error("Gagal mengambil data dari API: ", error);
     }
