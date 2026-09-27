@@ -96,7 +96,7 @@
                     <span id="system-status-text">System Active</span>
                 </div>
                 <button class="icon-btn" title="Notifications" onclick="showToast('info', 'No new notifications')"><span class="material-symbols-rounded">notifications</span></button>
-                <button class="icon-btn" title="Theme" onclick="toggleTheme()"><span class="material-symbols-rounded">dark_mode</span></button>
+                <button class="icon-btn" title="Theme" onclick="toggleTheme()"><span class="material-symbols-rounded" id="theme-toggle-icon">dark_mode</span></button>
             </div>
         </header>
         <main id="view-dashboard" class="page-view active">

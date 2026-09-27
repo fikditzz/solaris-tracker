@@ -539,14 +539,15 @@ function showToast(type, message) {
 }
 
 function applyTheme(theme) {
+    let activeTheme = theme;
     if (theme === 'auto') {
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.documentElement.setAttribute('data-bs-theme', 'dark');
-        } else {
-            document.documentElement.setAttribute('data-bs-theme', 'light');
-        }
-    } else {
-        document.documentElement.setAttribute('data-bs-theme', theme);
+        activeTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-bs-theme', activeTheme);
+    
+    let icon = document.getElementById('theme-toggle-icon');
+    if (icon) {
+        icon.innerText = activeTheme === 'dark' ? 'light_mode' : 'dark_mode';
     }
 }
 
@@ -554,6 +555,14 @@ function changeTheme(theme) {
     localStorage.setItem('theme', theme);
     applyTheme(theme);
     showToast('info', 'Theme changed to ' + theme);
+}
+
+function toggleTheme() {
+    let currentTheme = localStorage.getItem('theme') || 'light';
+    let newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    changeTheme(newTheme);
+    let themeSelect = document.getElementById('theme-select');
+    if(themeSelect) themeSelect.value = newTheme;
 }
 
 function exportCSV(type) {
