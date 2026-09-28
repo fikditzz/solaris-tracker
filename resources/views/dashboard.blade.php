@@ -508,7 +508,7 @@
                              <div class="text-xs text-muted fw-bold">IRRADIANCE DETECTION</div>
                              <div class="text-end">
                                  <div class="text-xs text-muted">DIFF. MARGIN</div>
-                                 <div class="fw-bold text-warning fs-5">2.4%</div>
+                                 <div class="fw-bold text-warning fs-5" id="dash-diff-margin">2.4%</div>
                              </div>
                          </div>
                          <div class="card-body-custom">

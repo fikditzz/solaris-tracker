@@ -388,6 +388,13 @@ async function fetchApiData() {
             animateValueChange('dash-ldr-tr', simState.ldrNE, 0);
             animateValueChange('dash-ldr-bl', simState.ldrSW, 0);
             animateValueChange('dash-ldr-br', simState.ldrSE, 0);
+            
+            let maxDiff = Math.max(Math.abs(simState.ldrNW - simState.ldrSE), Math.abs(simState.ldrNE - simState.ldrSW));
+            let maxLdr = Math.max(simState.ldrNW, simState.ldrNE, simState.ldrSW, simState.ldrSE);
+            let diffMargin = maxLdr > 0 ? (maxDiff / maxLdr * 100).toFixed(1) : 0.0;
+            if (document.getElementById('dash-diff-margin')) {
+                document.getElementById('dash-diff-margin').innerText = diffMargin + '%';
+            }
             if(document.getElementById('trk-azimuth-ptr')) document.getElementById('trk-azimuth-ptr').style.transform = `rotate(${simState.azimuth}deg)`;
             if(document.getElementById('trk-elevation-ptr')) document.getElementById('trk-elevation-ptr').style.transform = `rotate(${simState.elevation - 90}deg)`;
             
