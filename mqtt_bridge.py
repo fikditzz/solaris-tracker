@@ -29,14 +29,18 @@ def on_message(client, userdata, msg):
         payload = json.loads(msg.payload.decode("utf-8"))
         api_data = {}
         
+        v = float(payload.get('voltage', 0))
+        i = float(payload.get('current', 0))
+        p = float(payload.get('power', v * i))
+        
         if msg.topic == TOPIC_2AXIS:
             api_data = {
                 'panel_id': 'panel1',
                 'azimuth': payload.get('azimuth', 0),
                 'elevation': payload.get('elevation', 0),
-                'voltage': payload.get('voltage', 0),
-                'current': payload.get('current', 0),
-                'power_output': payload.get('power', 0),
+                'voltage': v,
+                'current': i,
+                'power_output': p,
                 'ldr_nw': payload.get('lightN', 0), 
                 'ldr_ne': payload.get('lightE', 0),
                 'ldr_sw': payload.get('lightW', 0),
@@ -48,9 +52,9 @@ def on_message(client, userdata, msg):
                 'panel_id': 'panel2',
                 'azimuth': payload.get('target_angle', 0),
                 'elevation': payload.get('current_angle', 0),
-                'voltage': payload.get('voltage', 0),
-                'current': payload.get('current', 0),
-                'power_output': payload.get('power', 0),
+                'voltage': v,
+                'current': i,
+                'power_output': p,
                 'tracking_mode': "Automatic" if payload.get('mode') == "AUTO" else "Manual"
             }
             
