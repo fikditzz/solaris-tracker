@@ -26,6 +26,8 @@ function switchPanel(panelId) {
     let dashAzValCol = document.getElementById('dash-azimuth-val-col');
     let dashElValCol = document.getElementById('dash-elevation-val-col');
     let algorithmType = document.getElementById('algorithm-type');
+    let dashLdrWidget = document.getElementById('dash-ldr-widget');
+    let trkLdrWidget = document.getElementById('trk-ldr-widget');
 
     if(panelId === 'panel2') {
         if(titleEl) titleEl.innerText = "Single-Axis Tracker Array";
@@ -39,6 +41,8 @@ function switchPanel(panelId) {
         if(btnLeft) btnLeft.style.visibility = 'hidden';
         if(btnRight) btnRight.style.visibility = 'hidden';
         if(azMotor) azMotor.style.setProperty('display', 'none', 'important');
+        if(dashLdrWidget) dashLdrWidget.style.setProperty('display', 'none', 'important');
+        if(trkLdrWidget) trkLdrWidget.style.setProperty('display', 'none', 'important');
         
         if(elMapCol) { elMapCol.classList.remove('col-6'); elMapCol.classList.add('col-12'); }
         if(elDataCard) { elDataCard.classList.remove('col-md-6'); elDataCard.classList.add('col-md-12'); }
@@ -59,6 +63,8 @@ function switchPanel(panelId) {
         if(btnLeft) btnLeft.style.visibility = 'visible';
         if(btnRight) btnRight.style.visibility = 'visible';
         if(azMotor) azMotor.style.display = '';
+        if(dashLdrWidget) dashLdrWidget.style.display = '';
+        if(trkLdrWidget) trkLdrWidget.style.display = '';
         
         if(elMapCol) { elMapCol.classList.remove('col-12'); elMapCol.classList.add('col-6'); }
         if(elDataCard) { elDataCard.classList.remove('col-md-12'); elDataCard.classList.add('col-md-6'); }

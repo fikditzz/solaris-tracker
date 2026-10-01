@@ -502,7 +502,7 @@
                          </div>
                      </div>
                  </div>
-                 <div class="col-md-6">
+                 <div class="col-md-6" id="trk-ldr-widget">
                      <div class="card-custom">
                          <div class="card-header-custom pb-0">
                              <div class="text-xs text-muted fw-bold">IRRADIANCE DETECTION</div>
