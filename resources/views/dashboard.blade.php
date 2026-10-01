@@ -172,7 +172,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-custom">
+                    <div class="card-custom" id="dash-ldr-widget">
                          <div class="card-header-custom pb-2">
                             <div class="d-flex align-items-center gap-2 fw-bold text-sm">
                                 <span class="material-symbols-rounded text-secondary" style="font-size:18px">sensors</span> LDR Sensor Grid
