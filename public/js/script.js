@@ -389,11 +389,19 @@ async function fetchApiData() {
             animateValueChange('dash-ldr-bl', simState.ldrSW, 0);
             animateValueChange('dash-ldr-br', simState.ldrSE, 0);
             
-            let maxDiff = Math.max(Math.abs(simState.ldrNW - simState.ldrSE), Math.abs(simState.ldrNE - simState.ldrSW));
-            let maxLdr = Math.max(simState.ldrNW, simState.ldrNE, simState.ldrSW, simState.ldrSE);
-            let diffMargin = maxLdr > 0 ? (maxDiff / maxLdr * 100).toFixed(1) : 0.0;
-            if (document.getElementById('dash-diff-margin')) {
-                document.getElementById('dash-diff-margin').innerText = diffMargin + '%';
+            let avgLdr = (simState.ldrNW + simState.ldrNE + simState.ldrSW + simState.ldrSE) / 4;
+            let diffMargin = 0;
+            if (avgLdr > 0) {
+                let maxDiff = Math.max(Math.abs(simState.ldrNW - simState.ldrNE), Math.abs(simState.ldrSW - simState.ldrSE), Math.abs(simState.ldrNW - simState.ldrSW), Math.abs(simState.ldrNE - simState.ldrSE));
+                diffMargin = (maxDiff / avgLdr) * 100;
+                if (diffMargin > 100) diffMargin = 100;
+            }
+            let diffEl = document.getElementById('dash-diff-margin');
+            if (diffEl) {
+                diffEl.innerText = diffMargin.toFixed(1) + '%';
+                if (diffMargin < 10) diffEl.className = 'fw-bold text-success fs-5';
+                else if (diffMargin < 30) diffEl.className = 'fw-bold text-warning fs-5';
+                else diffEl.className = 'fw-bold text-danger fs-5';
             }
             if(document.getElementById('trk-azimuth-ptr')) document.getElementById('trk-azimuth-ptr').style.transform = `rotate(${simState.azimuth}deg)`;
             if(document.getElementById('trk-elevation-ptr')) document.getElementById('trk-elevation-ptr').style.transform = `rotate(${simState.elevation - 90}deg)`;
