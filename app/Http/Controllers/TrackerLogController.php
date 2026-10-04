@@ -128,11 +128,12 @@ class TrackerLogController extends Controller
             $startDate = \Carbon\Carbon::parse($request->start_date)->startOfDay();
             $endDate = \Carbon\Carbon::parse($request->end_date)->endOfDay();
             $query->whereBetween('created_at', [$startDate, $endDate]);
-            $logs = $query->take(1000)->get();
-        } else {
-            // Default load the latest 200 logs
-            $logs = $query->take(200)->get();
         }
+        
+        // Perintah pengguna: "biar saja masukkan saja semua"
+        // (WARNING: Can cause browser to freeze if data is huge)
+        $logs = $query->get();
+        
         return response()->json(['success' => true, 'data' => $logs]);
     }
 
