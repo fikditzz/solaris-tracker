@@ -261,7 +261,15 @@ function renderPagination(totalItems, totalPages, startIdx, endIdx) {
 
 async function populateLogs() {
     try {
-        const response = await fetch('/api/tracker/logs?panel_id=' + window.currentPanelId);
+        let url = '/api/tracker/logs?panel_id=' + window.currentPanelId;
+        const startDate = document.getElementById('filter-date-start')?.value;
+        const endDate = document.getElementById('filter-date-end')?.value;
+        if (startDate && endDate) {
+            // Reformat m/d/Y to Y-m-d if needed, or rely on Carbon parsing
+            url += `&start_date=${startDate}&end_date=${endDate}`;
+        }
+        
+        const response = await fetch(url);
         const json = await response.json();
         if(json.success && json.data) {
             window.logDataCache = json.data;
@@ -623,34 +631,21 @@ function exportCSV(type) {
     showToast('success', 'Data exported successfully!');
 }
 
-function filterLogs() {
+async function filterLogs() {
+    await populateLogs();
     if(!window.logDataCache) return;
     
-    const startDate = document.getElementById('filter-date-start').value;
-    const endDate = document.getElementById('filter-date-end').value;
     const statusFilter = document.getElementById('filter-status').value;
     
     let filtered = window.logDataCache.filter(log => {
         let status = log.power_output > 4000 ? 'High Load' : (log.power_output == 0 ? 'Offline' : 'Optimal');
-        let dateObj = new Date(log.created_at);
         
         let matchStatus = true;
         if(statusFilter !== 'All' && statusFilter !== 'All Statuses') {
             matchStatus = (status === statusFilter);
         }
         
-        let matchDate = true;
-        if(startDate) {
-            let sDate = new Date(startDate);
-            if(dateObj < sDate) matchDate = false;
-        }
-        if(endDate) {
-            let eDate = new Date(endDate);
-            eDate.setHours(23, 59, 59);
-            if(dateObj > eDate) matchDate = false;
-        }
-        
-        return matchStatus && matchDate;
+        return matchStatus;
     });
     
     renderLogs(filtered);

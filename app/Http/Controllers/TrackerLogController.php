@@ -124,11 +124,14 @@ class TrackerLogController extends Controller
         $panelId = $request->query('panel_id', 'panel1');
         $query = TrackerLog::where('panel_id', $panelId)->latest();
         
-        if ($request->has('date')) {
-            $query->whereDate('created_at', $request->date);
-            $logs = $query->get();
+        if ($request->has('start_date') && $request->has('end_date')) {
+            $startDate = \Carbon\Carbon::parse($request->start_date)->startOfDay();
+            $endDate = \Carbon\Carbon::parse($request->end_date)->endOfDay();
+            $query->whereBetween('created_at', [$startDate, $endDate]);
+            $logs = $query->take(1000)->get();
         } else {
-            $logs = $query->take(50)->get();
+            // Default load the latest 200 logs
+            $logs = $query->take(200)->get();
         }
         return response()->json(['success' => true, 'data' => $logs]);
     }
