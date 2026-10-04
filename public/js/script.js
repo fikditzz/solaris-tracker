@@ -181,10 +181,27 @@ function renderLogs(data, page = 1) {
         let badgeClass = 'badge-optimal';
         let trStyle = '';
         let vClass = '';
-        let status = log.power_output > 4000 ? 'High Load' : (log.power_output == 0 ? 'Offline' : 'Optimal');
         
-        if(status === 'High Load') { badgeClass = 'badge-warning'; trStyle = 'background-color: #FEF9C3;'; vClass="text-warning fw-bold";}
-        if(status === 'Offline') { badgeClass = 'badge bg-danger bg-opacity-10 text-danger border border-danger-subtle'; trStyle = 'background-color: #FEF2F2;'; vClass="text-danger fw-bold";}
+        let status = 'Unknown';
+        if (log.panel_id === 'panel1') {
+            let avgLdr = (log.ldr_nw + log.ldr_ne + log.ldr_sw + log.ldr_se) / 4;
+            let maxDiff = Math.max(Math.abs(log.ldr_nw - log.ldr_ne), Math.abs(log.ldr_sw - log.ldr_se), Math.abs(log.ldr_nw - log.ldr_sw), Math.abs(log.ldr_ne - log.ldr_se));
+            let diffMargin = avgLdr > 0 ? (maxDiff / avgLdr) * 100 : 0;
+            
+            if (log.tracking_mode === 'Manual') status = 'Manual Override';
+            else if (diffMargin <= 15) status = 'Sun Locked';
+            else status = 'Tracking...';
+        } else {
+            let diff = Math.abs(log.azimuth - log.elevation);
+            if (log.tracking_mode === 'Manual') status = 'Manual Override';
+            else if (diff <= 2) status = 'Sun Locked';
+            else status = 'Tracking...';
+        }
+        
+        if(status === 'Tracking...') { badgeClass = 'badge-warning'; trStyle = 'background-color: #FEF9C3;'; vClass="text-warning fw-bold";}
+        if(status === 'Manual Override') { badgeClass = 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle'; trStyle = 'background-color: #F3F4F6;'; vClass="text-secondary fw-bold";}
+        if(status === 'Sun Locked') { badgeClass = 'badge-optimal'; }
+        
         let dateObj = new Date(log.created_at);
         let timeStr = dateObj.toLocaleString('en-CA', { timeZone: 'Asia/Makassar', hour12: false }).replace(',', '');
         
@@ -638,7 +655,20 @@ async function filterLogs() {
     const statusFilter = document.getElementById('filter-status').value;
     
     let filtered = window.logDataCache.filter(log => {
-        let status = log.power_output > 4000 ? 'High Load' : (log.power_output == 0 ? 'Offline' : 'Optimal');
+        let status = 'Unknown';
+        if (log.panel_id === 'panel1') {
+            let avgLdr = (log.ldr_nw + log.ldr_ne + log.ldr_sw + log.ldr_se) / 4;
+            let maxDiff = Math.max(Math.abs(log.ldr_nw - log.ldr_ne), Math.abs(log.ldr_sw - log.ldr_se), Math.abs(log.ldr_nw - log.ldr_sw), Math.abs(log.ldr_ne - log.ldr_se));
+            let diffMargin = avgLdr > 0 ? (maxDiff / avgLdr) * 100 : 0;
+            if (log.tracking_mode === 'Manual') status = 'Manual Override';
+            else if (diffMargin <= 15) status = 'Sun Locked';
+            else status = 'Tracking...';
+        } else {
+            let diff = Math.abs(log.azimuth - log.elevation);
+            if (log.tracking_mode === 'Manual') status = 'Manual Override';
+            else if (diff <= 2) status = 'Sun Locked';
+            else status = 'Tracking...';
+        }
         
         let matchStatus = true;
         if(statusFilter !== 'All' && statusFilter !== 'All Statuses') {

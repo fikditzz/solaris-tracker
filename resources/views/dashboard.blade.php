@@ -456,52 +456,7 @@
                  </div>
              </div>
              <div class="row g-4">
-                 <div class="col-md-6">
-                     <div class="card-custom">
-                         <div class="card-header-custom pb-0">
-                             <div class="text-xs text-muted fw-bold">ACTUATOR HEALTH</div>
-                             <button class="icon-btn border" onclick="showToast('info', 'Health diagnostics running...')"><span class="material-symbols-rounded">more_vert</span></button>
-                         </div>
-                         <div class="card-body-custom pt-4">
-                             <div class="motor-stat-box mb-4 transition-all" id="azimuth-motor-health">
-                                 <div class="d-flex justify-content-between align-items-center mb-3">
-                                     <div class="d-flex align-items-center gap-2 fw-semibold">
-                                         <span class="material-symbols-rounded text-muted" id="m1-icon">swap_horiz</span> <span id="m1-label">Azimuth Drive (M1)</span>
-                                     </div>
-                                     <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle">NOMINAL</span>
-                                 </div>
-                                 <div class="row text-sm">
-                                     <div class="col-6 border-end">
-                                         <div class="d-flex justify-content-between mb-1"><span class="text-muted">Current Load</span> <span class="fw-bold"><span id="trk-mot1-load">2.4</span>A</span></div>
-                                         <div class="progress" style="height: 6px;"><div class="progress-bar bg-warning" style="width: 40%"></div></div>
-                                     </div>
-                                     <div class="col-6 ps-3">
-                                         <div class="d-flex justify-content-between mb-1"><span class="text-muted">Temperature</span> <span class="fw-bold"><span id="trk-mot1-temp">38</span>°C</span></div>
-                                         <div class="progress" style="height: 6px;"><div class="progress-bar bg-warning" style="width: 38%"></div></div>
-                                     </div>
-                                 </div>
-                             </div>
-                             <div class="motor-stat-box">
-                                 <div class="d-flex justify-content-between align-items-center mb-3">
-                                     <div class="d-flex align-items-center gap-2 fw-semibold">
-                                         <span class="material-symbols-rounded text-muted" id="m2-icon">swap_vert</span> <span id="m2-label">Elevation Drive (M2)</span>
-                                     </div>
-                                     <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle">NOMINAL</span>
-                                 </div>
-                                 <div class="row text-sm">
-                                     <div class="col-6 border-end">
-                                         <div class="d-flex justify-content-between mb-1"><span class="text-muted">Current Load</span> <span class="fw-bold"><span id="trk-mot2-load">3.1</span>A</span></div>
-                                         <div class="progress" style="height: 6px;"><div class="progress-bar bg-warning" id="trk-mot2-load-bar" style="width: 55%"></div></div>
-                                     </div>
-                                     <div class="col-6 ps-3">
-                                         <div class="d-flex justify-content-between mb-1"><span class="text-muted">Temperature</span> <span class="fw-bold"><span id="trk-mot2-temp">42</span>°C</span></div>
-                                         <div class="progress" style="height: 6px;"><div class="progress-bar bg-warning" style="width: 42%"></div></div>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
-                     </div>
-                 </div>
+                 <!-- Actuator health widget removed -->
                  <div class="col-md-6" id="trk-ldr-widget">
                      <div class="card-custom">
                          <div class="card-header-custom pb-0">
@@ -633,10 +588,9 @@
                               <label class="form-label text-xs fw-bold text-muted">STATUS</label>
                               <select class="form-select" id="filter-status">
                                   <option value="All">All Statuses</option>
-                                  <option value="Optimal">Optimal</option>
-                                  <option value="Warning">Warning</option>
-                                  <option value="Offline">Offline</option>
-                                  <option value="High Load">High Load</option>
+                                  <option value="Sun Locked">Sun Locked</option>
+                                  <option value="Tracking...">Tracking...</option>
+                                  <option value="Manual Override">Manual Override</option>
                               </select>
                          </div>
                          <div class="col-md-3">
