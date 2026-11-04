@@ -16,6 +16,7 @@ Route::post('/tracker/log', [TrackerLogController::class, 'store']);
 Route::get('/tracker/latest', [TrackerLogController::class, 'latest']);
 Route::post('/tracker/mode', [TrackerLogController::class, 'setMode']);
 Route::get('/tracker/logs', [TrackerLogController::class, 'logs']);
+Route::get('/tracker/series', [TrackerLogController::class, 'series']);
 Route::post('/tracker/command', [TrackerLogController::class, 'sendCommand']);
 Route::post('/tracker/reset', [TrackerLogController::class, 'resetData'])->middleware(EnsureDevToolsEnabled::class);
 
@@ -29,6 +30,9 @@ Route::get('/tracker/seed', function (Request $request) {
                 'panel_id' => $pid,
                 'azimuth' => rand(0, 360),
                 'elevation' => rand(0, 180),
+                'voltage' => rand(300, 400),
+                'current' => rand(8, 15),
+                'power_output' => rand(2400, 6000),
                 'ldr_nw' => rand(100, 1000),
                 'ldr_ne' => rand(100, 1000),
                 'ldr_sw' => rand(100, 1000),

@@ -3,12 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Models\TrackerLog;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class TrackerLogController extends Controller
 {
-    
+    private const STORED_MODES = ['Automatic', 'Manual', 'Stop'];
+
+    /** Chart ranges: window length in hours and bucket size in seconds. */
+    private const SERIES_RANGES = [
+        '24h' => ['hours' => 24, 'bucket' => 900],
+        '7d' => ['hours' => 168, 'bucket' => 7200],
+        '30d' => ['hours' => 720, 'bucket' => 86400],
+    ];
+
+    private const EPOCH_2000 = 946684800;
+
     public function store(Request $request)
     {
         try {
@@ -34,18 +48,20 @@ class TrackerLogController extends Controller
                 'created_at' => 'nullable|date',
             ]);
 
-            
             $panelId = $validated['panel_id'] ?? 'panel1';
             $validated['panel_id'] = $panelId;
 
-            
-            $mode = \Illuminate\Support\Facades\Cache::get('tracking_mode_' . $panelId, 'Automatic');
+            // A mode chosen from the dashboard wins; otherwise keep what the device reports.
+            $reported = $validated['tracking_mode'] ?? null;
+            $mode = Cache::get('tracking_mode_' . $panelId);
+            if (! in_array($mode, self::STORED_MODES, true)) {
+                $mode = in_array($reported, self::STORED_MODES, true) ? $reported : 'Automatic';
+            }
             $validated['tracking_mode'] = $mode;
 
-            
             $log = TrackerLog::create($validated);
-            
-            $command = \Illuminate\Support\Facades\Cache::pull('manual_command_' . $panelId);
+
+            $command = Cache::pull('manual_command_' . $panelId);
 
             return response()->json([
                 'success' => true,
@@ -54,6 +70,8 @@ class TrackerLogController extends Controller
                 'mode' => $mode,
                 'command' => $command
             ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Error saving tracker data from ESP32: ' . $e->getMessage());
             return response()->json([
@@ -63,7 +81,6 @@ class TrackerLogController extends Controller
         }
     }
 
-    
     public function latest(Request $request)
     {
         $panelId = $request->query('panel_id', 'panel1');
@@ -73,30 +90,27 @@ class TrackerLogController extends Controller
             'data' => $latest
         ]);
     }
-    
+
     public function setMode(Request $request)
     {
         $validated = $request->validate([
             'mode' => 'required|string|in:Automatic,Manual,Reset,Stop',
             'panel_id' => 'nullable|string'
         ]);
-        
+
         $panelId = $validated['panel_id'] ?? 'panel1';
-        
-        if ($panelId === 'all') {
-            \Illuminate\Support\Facades\Cache::put('tracking_mode_panel1', $validated['mode']);
-            \Illuminate\Support\Facades\Cache::put('tracking_mode_panel2', $validated['mode']);
-            
-            $latest1 = TrackerLog::where('panel_id', 'panel1')->latest()->first();
-            if ($latest1) { $latest1->tracking_mode = $validated['mode']; $latest1->save(); }
-            
-            $latest2 = TrackerLog::where('panel_id', 'panel2')->latest()->first();
-            if ($latest2) { $latest2->tracking_mode = $validated['mode']; $latest2->save(); }
-        } else {
-            \Illuminate\Support\Facades\Cache::put('tracking_mode_' . $panelId, $validated['mode']);
-            
-            
-            $latest = TrackerLog::where('panel_id', $panelId)->latest()->first();
+        $panels = $panelId === 'all' ? ['panel1', 'panel2'] : [$panelId];
+
+        foreach ($panels as $panel) {
+            // Reset is a one-off move, not a lasting mode, so it must not stick to later logs.
+            if ($validated['mode'] === 'Reset') {
+                Cache::put('manual_command_' . $panel, 'Reset', now()->addMinutes(1));
+                continue;
+            }
+
+            Cache::put('tracking_mode_' . $panel, $validated['mode']);
+
+            $latest = TrackerLog::where('panel_id', $panel)->latest()->first();
             if ($latest) {
                 $latest->tracking_mode = $validated['mode'];
                 $latest->save();
@@ -114,27 +128,120 @@ class TrackerLogController extends Controller
         ]);
 
         $panelId = $validated['panel_id'] ?? 'panel1';
-        \Illuminate\Support\Facades\Cache::put('manual_command_' . $panelId, $validated['command'], now()->addMinutes(1));
+        Cache::put('manual_command_' . $panelId, $validated['command'], now()->addMinutes(1));
 
         return response()->json(['success' => true, 'command' => $validated['command']]);
     }
 
+    /**
+     * Returns every matching log unless per_page is given, then one page plus meta.
+     */
     public function logs(Request $request)
     {
+        $request->validate([
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date',
+            'status' => ['nullable', Rule::in(TrackerLog::STATUSES)],
+            'per_page' => 'nullable|integer|min:1|max:200',
+            'page' => 'nullable|integer|min:1',
+        ]);
+
         $panelId = $request->query('panel_id', 'panel1');
         $query = TrackerLog::where('panel_id', $panelId)->latest();
-        
-        if ($request->has('start_date') && $request->has('end_date')) {
-            $startDate = \Carbon\Carbon::parse($request->start_date)->startOfDay();
-            $endDate = \Carbon\Carbon::parse($request->end_date)->endOfDay();
-            $query->whereBetween('created_at', [$startDate, $endDate]);
+        $timezone = config('tracker.timezone');
+
+        if ($request->filled('start_date')) {
+            $query->where('created_at', '>=', Carbon::parse($request->start_date, $timezone)->startOfDay()->utc());
         }
-        
-        // Perintah pengguna: "biar saja masukkan saja semua"
-        // (WARNING: Can cause browser to freeze if data is huge)
-        $logs = $query->get();
-        
-        return response()->json(['success' => true, 'data' => $logs]);
+        if ($request->filled('end_date')) {
+            $query->where('created_at', '<=', Carbon::parse($request->end_date, $timezone)->endOfDay()->utc());
+        }
+        if ($request->filled('status')) {
+            $query->whereStatus($request->status, $panelId);
+        }
+
+        if (! $request->filled('per_page')) {
+            return response()->json(['success' => true, 'data' => $query->get()]);
+        }
+
+        $page = $query->paginate((int) $request->per_page);
+
+        return response()->json([
+            'success' => true,
+            'data' => $page->items(),
+            'meta' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Time-bucketed averages for charts, aggregated in SQL so long ranges stay light.
+     * Energy is an estimate: average power x time between a bucket's first and last sample.
+     */
+    public function series(Request $request)
+    {
+        $validated = $request->validate([
+            'range' => ['nullable', Rule::in(array_keys(self::SERIES_RANGES))],
+        ]);
+
+        $range = self::SERIES_RANGES[$validated['range'] ?? '24h'];
+        $panelId = $request->query('panel_id', 'panel1');
+        $size = $range['bucket'];
+        // Shift buckets so daily ones start at local midnight instead of UTC midnight.
+        $offset = Carbon::now(config('tracker.timezone'))->utcOffset() * 60;
+
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $seconds = $isSqlite
+            ? "(CAST(strftime('%s', created_at) AS INTEGER) - " . self::EPOCH_2000 . ')'
+            : "TIMESTAMPDIFF(SECOND, '2000-01-01 00:00:00', created_at)";
+        $bucket = $isSqlite
+            ? "(($seconds + $offset) / $size)"
+            : "(($seconds + $offset) DIV $size)";
+
+        $rows = TrackerLog::where('panel_id', $panelId)
+            ->where('created_at', '>=', now()->subHours($range['hours']))
+            ->selectRaw("$bucket AS bucket")
+            ->selectRaw('AVG(voltage) AS voltage, AVG(`current`) AS `current`, AVG(power_output) AS power')
+            ->selectRaw('MAX(power_output) AS peak_power, COUNT(*) AS samples')
+            ->selectRaw("MAX($seconds) - MIN($seconds) AS span_seconds")
+            ->groupBy('bucket')
+            ->orderBy('bucket')
+            ->toBase()
+            ->get();
+
+        $points = $rows->map(function ($row) use ($size, $offset) {
+            $power = (float) $row->power;
+            $timestamp = (int) $row->bucket * $size - $offset + self::EPOCH_2000;
+
+            return [
+                't' => Carbon::createFromTimestampUTC($timestamp)->toIso8601ZuluString(),
+                'voltage' => round((float) $row->voltage, 2),
+                'current' => round((float) $row->current, 2),
+                'power' => round($power, 2),
+                'energy_wh' => round($power * ((int) $row->span_seconds / 3600), 2),
+                'peak_power' => round((float) $row->peak_power, 2),
+                'samples' => (int) $row->samples,
+            ];
+        })->values();
+
+        $samples = $points->sum('samples');
+
+        return response()->json([
+            'success' => true,
+            'data' => $points,
+            'summary' => [
+                'samples' => $samples,
+                'peak_power' => $points->max('peak_power') ?? 0,
+                'avg_power' => $samples > 0
+                    ? round($points->sum(fn ($point) => $point['power'] * $point['samples']) / $samples, 2)
+                    : 0,
+                'energy_wh' => round($points->sum('energy_wh'), 2),
+            ],
+        ]);
     }
 
     public function resetData(Request $request)
@@ -147,8 +254,8 @@ class TrackerLogController extends Controller
             TrackerLog::truncate();
             $message = 'Database truncated completely.';
         }
-        
-        \Illuminate\Support\Facades\Cache::flush();
+
+        Cache::flush();
         return response()->json([
             'success' => true,
             'message' => $message
