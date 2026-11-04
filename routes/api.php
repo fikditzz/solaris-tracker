@@ -20,6 +20,7 @@ Route::get('/tracker/series', [TrackerLogController::class, 'series']);
 Route::get('/tracker/weather', [TrackerLogController::class, 'weatherHistory']);
 Route::get('/tracker/weather/latest', [TrackerLogController::class, 'weatherLatest']);
 Route::post('/tracker/command', [TrackerLogController::class, 'sendCommand']);
+Route::post('/tracker/target', [TrackerLogController::class, 'sendTarget']);
 Route::post('/tracker/reset', [TrackerLogController::class, 'resetData'])->middleware(EnsureDevToolsEnabled::class);
 
 Route::get('/tracker/seed', function (Request $request) {

@@ -20,7 +20,6 @@ const PANELS = {
     panel2: { name: 'Array Beta', label: 'Array Beta (Single Axis)', title: 'Single-Axis Tracker Array', type: 'Single-Axis Tracking', algorithm: 'Astronomical Algorithm' },
 };
 
-const COMMAND_LABELS = { Up: 'Tilt up', Down: 'Tilt down', Left: 'Rotate left', Right: 'Rotate right', Reset: 'Reset position' };
 const COMPASS = ['North', 'North-East', 'East', 'South-East', 'South', 'South-West', 'West', 'North-West'];
 const STATUS_CLASSES = { 'Sun Locked': 'is-locked', 'Tracking...': 'is-tracking', 'Manual Override': 'is-manual', Stopped: 'is-stopped' };
 const ROW_CLASSES = { 'Tracking...': 'log-row-tracking', 'Manual Override': 'log-row-manual', Stopped: 'log-row-stopped' };
@@ -169,13 +168,11 @@ function switchPanel(panelId, { silent = false } = {}) {
     setText('panelDropdownAxis', ` ${panel.label.slice(panel.name.length + 1)}`);
     state.selects.subsystem?.setValue(panelId, true);
 
-    ['azimuth-map-col', 'azimuth-data-card', 'dash-azimuth-map-col', 'dash-azimuth-val-col', 'dash-ldr-widget', 'trk-ldr-widget']
+    ['azimuth-map-col', 'azimuth-data-card', 'dash-azimuth-map-col', 'dash-azimuth-val-col', 'dash-ldr-widget', 'trk-ldr-widget', 'manual-azimuth-field']
         .forEach((id) => setDisplay(id, !single));
-    ['btn-manual-left', 'btn-manual-right'].forEach((id) => {
-        byId(id).style.visibility = single ? 'hidden' : 'visible';
-    });
-    ['elevation-map-col', 'elevation-data-card', 'dash-elevation-map-col', 'dash-elevation-val-col']
+    ['elevation-map-col', 'elevation-data-card', 'dash-elevation-map-col', 'dash-elevation-val-col', 'manual-elevation-field']
         .forEach((id) => setColumn(id, single, 'col-6', 'col-12'));
+    byId('manual-target-form').reset();
 
     document.querySelectorAll('[data-panel]').forEach((el) => {
         el.classList.toggle('active', el.dataset.panel === panelId);
@@ -245,10 +242,9 @@ function renderModeControls(mode) {
     trkManual.className = pill(manual);
     trkManual.setAttribute('aria-pressed', String(manual));
 
-    const pad = byId('d-pad-container');
-    pad.style.opacity = manual ? '1' : '0.5';
-    pad.querySelectorAll('.d-btn').forEach((button) => { button.disabled = !manual; });
-    setText('d-pad-note', manual ? 'Each press is sent the next time the device reports in.' : 'Switch to Manual to move the panel.');
+    byId('manual-target-form').classList.toggle('is-locked', !manual);
+    byId('manual-target-fields').disabled = !manual;
+    setText('manual-note', manual ? 'Sent the next time the device reports in. A value left empty keeps that axis where it is.' : 'Switch to Manual to move the panel.');
 }
 
 function compassName(degrees) {
@@ -259,6 +255,8 @@ function renderPosition(data) {
     const azimuth = data ? data.azimuth : null;
     const elevation = data ? data.elevation : null;
 
+    setText('manual-azimuth-now', formatNumber(azimuth, 1));
+    setText('manual-elevation-now', formatNumber(elevation, 1));
     animateValueChange('dash-azimuth', azimuth, 1);
     animateValueChange('dash-elevation', elevation, 1);
     animateValueChange('trk-azimuth', azimuth, 0);
@@ -409,13 +407,47 @@ async function setTrackerMode(mode) {
     }
 }
 
-async function sendManualCommand(command) {
+async function sendResetCommand() {
     const panel = PANELS[state.panelId];
     try {
-        await apiPost('command', { command, panel_id: state.panelId });
-        showToast('success', `${COMMAND_LABELS[command]} queued for ${panel.name}`);
+        await apiPost('command', { command: 'Reset', panel_id: state.panelId });
+        showToast('success', `Reset position queued for ${panel.name}`);
     } catch (error) {
         showToast('error', `Could not send the command: ${error.message}`);
+    }
+}
+
+async function sendManualTarget(event) {
+    event.preventDefault();
+    const panel = PANELS[state.panelId];
+    const azimuthInput = byId('manual-azimuth');
+    const elevationInput = byId('manual-elevation');
+
+    const target = {};
+    if (azimuthInput.value !== '') target.azimuth = Number(azimuthInput.value);
+    if (elevationInput.value !== '') target.elevation = Number(elevationInput.value);
+
+    if (Object.keys(target).length === 0) {
+        showToast('error', 'Enter a value first');
+        (state.panelId === 'panel2' ? elevationInput : azimuthInput).focus();
+        return;
+    }
+
+    const sendButton = byId('btn-manual-send');
+    sendButton.disabled = true;
+    try {
+        await apiPost('target', { ...target, panel_id: state.panelId });
+        const summary = Object.entries(target).map(([axis, value]) => `${axis} ${value}°`).join(', ');
+        if (state.connection === 'online') {
+            showToast('success', `${panel.name}: ${summary} queued`);
+        } else {
+            showToast('info', `${summary} queued, but ${panel.name} is not reporting. It expires after 1 minute.`);
+        }
+        byId('manual-target-form').reset();
+    } catch (error) {
+        showToast('error', `Could not send the position: ${error.message}`);
+    } finally {
+        sendButton.disabled = false;
     }
 }
 
@@ -987,11 +1019,6 @@ function bindEvents() {
             switchPanel(panel.dataset.panel);
             return;
         }
-        const command = event.target.closest('[data-command]');
-        if (command) {
-            sendManualCommand(command.dataset.command);
-            return;
-        }
         const page = event.target.closest('[data-page]');
         if (page) {
             state.logPage = Number(page.dataset.page);
@@ -1004,7 +1031,8 @@ function bindEvents() {
 
     byId('btn-mode-auto').addEventListener('click', () => setTrackerMode('Automatic'));
     byId('btn-mode-stop').addEventListener('click', () => setTrackerMode('Stop'));
-    byId('btn-mode-reset').addEventListener('click', () => sendManualCommand('Reset'));
+    byId('btn-mode-reset').addEventListener('click', sendResetCommand);
+    byId('manual-target-form').addEventListener('submit', sendManualTarget);
     byId('btn-trk-auto').addEventListener('click', () => setTrackerMode('Automatic'));
     byId('btn-trk-manual').addEventListener('click', () => setTrackerMode('Manual'));
 

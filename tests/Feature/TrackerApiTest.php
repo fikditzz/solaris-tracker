@@ -166,6 +166,56 @@ class TrackerApiTest extends TestCase
             ->assertJsonPath('command', null);
     }
 
+    public function test_manual_target_reaches_the_device_once(): void
+    {
+        $this->postJson('/api/tracker/mode', ['mode' => 'Manual', 'panel_id' => 'panel1'])->assertOk();
+        $this->postJson('/api/tracker/target', ['azimuth' => 120.5, 'elevation' => 0, 'panel_id' => 'panel1'])->assertOk();
+
+        $this->postJson('/api/tracker/log', ['panel_id' => 'panel1'])
+            ->assertCreated()
+            ->assertJsonPath('target.azimuth', 120.5)
+            ->assertJsonPath('target.elevation', 0);
+
+        $this->postJson('/api/tracker/log', ['panel_id' => 'panel1'])
+            ->assertCreated()
+            ->assertJsonPath('target', null);
+    }
+
+    public function test_manual_target_can_move_a_single_axis(): void
+    {
+        $this->postJson('/api/tracker/mode', ['mode' => 'Manual', 'panel_id' => 'panel2'])->assertOk();
+        $this->postJson('/api/tracker/target', ['elevation' => 45, 'panel_id' => 'panel2'])->assertOk();
+
+        $this->postJson('/api/tracker/log', ['panel_id' => 'panel2'])
+            ->assertCreated()
+            ->assertJsonPath('target.elevation', 45)
+            ->assertJsonMissingPath('target.azimuth');
+    }
+
+    public function test_manual_target_rejects_missing_or_out_of_range_values(): void
+    {
+        $this->postJson('/api/tracker/target', ['panel_id' => 'panel1'])->assertStatus(422);
+        $this->postJson('/api/tracker/target', ['azimuth' => 361])->assertStatus(422)->assertJsonValidationErrors('azimuth');
+        $this->postJson('/api/tracker/target', ['elevation' => -1])->assertStatus(422)->assertJsonValidationErrors('elevation');
+    }
+
+    public function test_manual_target_is_dropped_when_leaving_manual_mode(): void
+    {
+        $this->postJson('/api/tracker/mode', ['mode' => 'Manual', 'panel_id' => 'panel1'])->assertOk();
+        $this->postJson('/api/tracker/target', ['azimuth' => 90, 'panel_id' => 'panel1'])->assertOk();
+        $this->postJson('/api/tracker/mode', ['mode' => 'Automatic', 'panel_id' => 'panel1'])->assertOk();
+
+        $this->postJson('/api/tracker/log', ['panel_id' => 'panel1'])
+            ->assertCreated()
+            ->assertJsonPath('target', null);
+
+        $this->postJson('/api/tracker/mode', ['mode' => 'Manual', 'panel_id' => 'panel1'])->assertOk();
+
+        $this->postJson('/api/tracker/log', ['panel_id' => 'panel1'])
+            ->assertCreated()
+            ->assertJsonPath('target', null);
+    }
+
     public function test_store_keeps_device_mode_until_one_is_chosen_on_the_dashboard(): void
     {
         $this->postJson('/api/tracker/log', ['panel_id' => 'panel1', 'tracking_mode' => 'Manual'])

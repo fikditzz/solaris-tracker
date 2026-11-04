@@ -450,18 +450,30 @@
                      <div class="card-custom flex-grow-1">
                           <div class="card-header-custom pb-0"><div class="text-xs text-muted fw-bold">MANUAL OVERRIDE</div></div>
                           <div class="card-body-custom d-flex flex-column justify-content-center">
-                              <div class="d-pad-container" id="d-pad-container" style="opacity: 0.5;">
-                                  <div></div>
-                                  <button type="button" class="d-btn" data-command="Up" aria-label="Tilt up" disabled><span class="material-symbols-rounded" aria-hidden="true">expand_less</span></button>
-                                  <div></div>
-                                  <button type="button" class="d-btn transition-all" id="btn-manual-left" data-command="Left" aria-label="Rotate left" disabled><span class="material-symbols-rounded" aria-hidden="true">chevron_left</span></button>
-                                  <button type="button" class="d-btn center transition-all" data-command="Reset" aria-label="Reset position" disabled><span class="material-symbols-rounded" aria-hidden="true">adjust</span></button>
-                                  <button type="button" class="d-btn transition-all" id="btn-manual-right" data-command="Right" aria-label="Rotate right" disabled><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button>
-                                  <div></div>
-                                  <button type="button" class="d-btn" data-command="Down" aria-label="Tilt down" disabled><span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button>
-                                  <div></div>
-                              </div>
-                              <p class="d-pad-note" id="d-pad-note">Switch to Manual to move the panel.</p>
+                              <form id="manual-target-form" class="manual-target is-locked">
+                                  <fieldset id="manual-target-fields" disabled>
+                                      <div class="row g-3 mb-3">
+                                          <div class="col-6" id="manual-azimuth-field">
+                                              <label for="manual-azimuth" class="text-xs text-muted fw-bold mb-1">AZIMUTH</label>
+                                              <div class="input-group">
+                                                  <input type="number" class="form-control" id="manual-azimuth" min="0" max="360" step="any" inputmode="decimal" placeholder="0–360">
+                                                  <span class="input-group-text">°</span>
+                                              </div>
+                                              <div class="manual-now">Now <span id="manual-azimuth-now">--</span>°</div>
+                                          </div>
+                                          <div class="col-6" id="manual-elevation-field">
+                                              <label for="manual-elevation" class="text-xs text-muted fw-bold mb-1">ELEVATION</label>
+                                              <div class="input-group">
+                                                  <input type="number" class="form-control" id="manual-elevation" min="0" max="180" step="any" inputmode="decimal" placeholder="0–180">
+                                                  <span class="input-group-text">°</span>
+                                              </div>
+                                              <div class="manual-now">Now <span id="manual-elevation-now">--</span>°</div>
+                                          </div>
+                                      </div>
+                                      <button type="submit" class="btn btn-warning fw-semibold w-100" id="btn-manual-send">Move Panel</button>
+                                  </fieldset>
+                              </form>
+                              <p class="manual-note" id="manual-note">Switch to Manual to move the panel.</p>
                           </div>
                      </div>
                  </div>

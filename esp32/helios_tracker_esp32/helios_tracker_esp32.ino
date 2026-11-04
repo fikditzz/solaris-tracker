@@ -140,6 +140,14 @@ void receiveCommand(PanelData &panel, String response) {
       Serial.println(cmd);
       executeManualCommand(panel, cmd);
     }
+
+    // Posisi yang diketik di dashboard; sumbu yang tidak dikirim tetap di posisinya
+    JsonObject target = resDoc["target"];
+    if (!target.isNull()) {
+      if (!target["azimuth"].isNull())   panel.azimuth = constrain(target["azimuth"].as<float>(), 0.0f, 360.0f);
+      if (!target["elevation"].isNull()) panel.elevation = constrain(target["elevation"].as<float>(), 0.0f, 180.0f);
+      Serial.print("  Posisi manual dari server ("); Serial.print(panel.panelId); Serial.println(") diterapkan.");
+    }
   } else {
     Serial.println("  Gagal parsing JSON dari server.");
   }

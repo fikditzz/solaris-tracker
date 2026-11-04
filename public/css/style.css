@@ -251,21 +251,8 @@ body {
     border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1rem;
-}.d-pad-container {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    max-width: 200px;
-    margin: 0 auto;
 }
-.d-btn {
-    background: var(--bg-color); border: 1px solid var(--border-color);
-    border-radius: 8px; padding: 15px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: all 0.1s; color: var(--text-main);
-}
-.d-btn:active { background: var(--border-color); transform: scale(0.95); }
-.d-btn.center { background: var(--primary-light); border-color: var(--primary); color: #854D0E;}.text-big { font-size: 2.5rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.5px; }
+.text-big { font-size: 2.5rem; font-weight: 700; line-height: 1.2; letter-spacing: -0.5px; }
 .val-unit { font-size: 1rem; font-weight: 500; color: var(--text-muted); }
 .animated-value { transition: color 0.3s; }
 .val-up { color: var(--success); }
@@ -292,7 +279,7 @@ body {
 @keyframes fadeOutRight { to { opacity: 0; transform: translateX(100px); } }.transition-all {
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
-.card-custom, .page-view, .d-btn, .nav-link {
+.card-custom, .page-view, .nav-link {
     transition: background-color 0.3s ease, transform 0.3s ease, opacity 0.3s ease, border-color 0.3s ease;
 }
 
@@ -442,8 +429,9 @@ body, .card-custom, .bg-light, .bg-white, .text-dark, .text-muted {
 [data-bs-theme="dark"] .legend-current { background: #94A3B8; }
 [data-bs-theme="dark"] .legend-temperature { background: #F87171; }
 
-.d-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.d-pad-note { color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 0.75rem 0 0; }
+.manual-target.is-locked { opacity: 0.5; }
+.manual-now { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; }
+.manual-note { color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 0.75rem 0 0; }
 
 .detail-list { margin: 0; }
 .detail-list > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-top: 1px solid var(--border-color); }

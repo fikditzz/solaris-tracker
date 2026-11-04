@@ -66,13 +66,15 @@ class TrackerLogController extends Controller
             $log = TrackerLog::create($validated);
 
             $command = Cache::pull('manual_command_' . $panelId);
+            $target = $mode === 'Manual' ? Cache::pull('manual_target_' . $panelId) : null;
 
             return response()->json([
                 'success' => true,
                 'message' => 'Data logged successfully',
                 'data' => $log,
                 'mode' => $mode,
-                'command' => $command
+                'command' => $command,
+                'target' => $target
             ], 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
             throw $e;
@@ -114,6 +116,11 @@ class TrackerLogController extends Controller
 
             Cache::put('tracking_mode_' . $panel, $validated['mode']);
 
+            // A position typed for Manual must not fire after leaving and re-entering it.
+            if ($validated['mode'] !== 'Manual') {
+                Cache::forget('manual_target_' . $panel);
+            }
+
             $latest = TrackerLog::where('panel_id', $panel)->latest()->first();
             if ($latest) {
                 $latest->tracking_mode = $validated['mode'];
@@ -135,6 +142,30 @@ class TrackerLogController extends Controller
         Cache::put('manual_command_' . $panelId, $validated['command'], now()->addMinutes(1));
 
         return response()->json(['success' => true, 'command' => $validated['command']]);
+    }
+
+    /**
+     * Queues a position for the device; an axis left out stays where it is.
+     */
+    public function sendTarget(Request $request)
+    {
+        $validated = $request->validate([
+            'azimuth' => 'nullable|required_without:elevation|numeric|between:0,360',
+            'elevation' => 'nullable|required_without:azimuth|numeric|between:0,180',
+            'panel_id' => 'nullable|string'
+        ]);
+
+        $target = [];
+        foreach (['azimuth', 'elevation'] as $axis) {
+            if (isset($validated[$axis])) {
+                $target[$axis] = (float) $validated[$axis];
+            }
+        }
+
+        $panelId = $validated['panel_id'] ?? 'panel1';
+        Cache::put('manual_target_' . $panelId, $target, now()->addMinutes(1));
+
+        return response()->json(['success' => true, 'target' => $target]);
     }
 
     /**
