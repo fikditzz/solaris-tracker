@@ -14,6 +14,20 @@ services:
     environment:
       - DB_HOST=db
 
+  # Menjalankan tugas terjadwal Laravel, termasuk pencatatan cuaca tiap 15 menit.
+  scheduler:
+    build: .
+    container_name: solaris-scheduler
+    restart: always
+    user: www-data
+    command: php artisan schedule:work
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+
   db:
     image: mysql:8.0
     container_name: solaris-db

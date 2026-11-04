@@ -1,778 +1,1086 @@
-window.currentPanelId = localStorage.getItem('panelId') || 'panel1';
-let currentPage = 1;
-const itemsPerPage = 7;
-let currentFilteredData = [];
+'use strict';
 
-function switchPanel(panelId) {
-    window.currentPanelId = panelId;
-    localStorage.setItem('panelId', panelId);
-    document.querySelectorAll('.page-view.active').forEach(el => {
-        el.classList.remove('panel-switch-anim');
-        void el.offsetWidth;
-        el.classList.add('panel-switch-anim');
-    });
-    
-    let titleEl = document.getElementById('tracker-panel-title');
-    let azMapCol = document.getElementById('azimuth-map-col');
-    let azDataCard = document.getElementById('azimuth-data-card');
-    let btnLeft = document.getElementById('btn-manual-left');
-    let btnRight = document.getElementById('btn-manual-right');
-    let azMotor = document.getElementById('azimuth-motor-health');
-    let elMapCol = document.getElementById('elevation-map-col');
-    let elDataCard = document.getElementById('elevation-data-card');
-    let dashTrackType = document.getElementById('dash-tracking-type');
-    let dashAzMapCol = document.getElementById('dash-azimuth-map-col');
-    let dashElMapCol = document.getElementById('dash-elevation-map-col');
-    let dashAzValCol = document.getElementById('dash-azimuth-val-col');
-    let dashElValCol = document.getElementById('dash-elevation-val-col');
-    let algorithmType = document.getElementById('algorithm-type');
-    let dashLdrWidget = document.getElementById('dash-ldr-widget');
-    let trkLdrWidget = document.getElementById('trk-ldr-widget');
+const TIMEZONE = 'Asia/Makassar';
+const OFFLINE_AFTER_SECONDS = 180;
+const LOGS_PER_PAGE = 7;
+const LOG_REFRESH_MS = 10000;
+const SERIES_REFRESH_MS = 60000;
+const WEATHER_REFRESH_MS = 5 * 60 * 1000;
 
-    if(panelId === 'panel2') {
-        if(titleEl) titleEl.innerText = "Single-Axis Tracker Array";
-        if(dashTrackType) dashTrackType.innerText = "Single-Axis Tracking Active";
-        if(algorithmType) algorithmType.innerText = "Astronomical Algorithm";
-        if(document.getElementById('panelDropdownText')) document.getElementById('panelDropdownText').innerText = "Array Beta (Single Axis)";
-        if(document.getElementById('panelSelector')) document.getElementById('panelSelector').value = 'panel2';
-        
-        if(azMapCol) azMapCol.style.setProperty('display', 'none', 'important');
-        if(azDataCard) azDataCard.style.setProperty('display', 'none', 'important');
-        if(btnLeft) btnLeft.style.visibility = 'hidden';
-        if(btnRight) btnRight.style.visibility = 'hidden';
-        if(azMotor) azMotor.style.setProperty('display', 'none', 'important');
-        if(dashLdrWidget) dashLdrWidget.style.setProperty('display', 'none', 'important');
-        if(trkLdrWidget) trkLdrWidget.style.setProperty('display', 'none', 'important');
-        
-        if(elMapCol) { elMapCol.classList.remove('col-6'); elMapCol.classList.add('col-12'); }
-        if(elDataCard) { elDataCard.classList.remove('col-md-6'); elDataCard.classList.add('col-md-12'); }
-        
-        if(dashAzMapCol) dashAzMapCol.style.setProperty('display', 'none', 'important');
-        if(dashAzValCol) dashAzValCol.style.setProperty('display', 'none', 'important');
-        if(dashElMapCol) { dashElMapCol.classList.remove('col-6'); dashElMapCol.classList.add('col-12'); }
-        if(dashElValCol) { dashElValCol.classList.remove('col-6'); dashElValCol.classList.add('col-12'); }
-    } else {
-        if(titleEl) titleEl.innerText = "Dual-Axis Tracker Array";
-        if(dashTrackType) dashTrackType.innerText = "Dual-Axis Tracking Active";
-        if(algorithmType) algorithmType.innerText = "LDR Sensors";
-        if(document.getElementById('panelDropdownText')) document.getElementById('panelDropdownText').innerText = "Array Alpha (Dual Axis)";
-        if(document.getElementById('panelSelector')) document.getElementById('panelSelector').value = 'panel1';
-        
-        if(azMapCol) azMapCol.style.display = '';
-        if(azDataCard) azDataCard.style.display = '';
-        if(btnLeft) btnLeft.style.visibility = 'visible';
-        if(btnRight) btnRight.style.visibility = 'visible';
-        if(azMotor) azMotor.style.display = '';
-        if(dashLdrWidget) dashLdrWidget.style.display = '';
-        if(trkLdrWidget) trkLdrWidget.style.display = '';
-        
-        if(elMapCol) { elMapCol.classList.remove('col-12'); elMapCol.classList.add('col-6'); }
-        if(elDataCard) { elDataCard.classList.remove('col-md-12'); elDataCard.classList.add('col-md-6'); }
-        
-        if(dashAzMapCol) { dashAzMapCol.style.display = ''; dashAzMapCol.classList.remove('col-12'); dashAzMapCol.classList.add('col-6'); }
-        if(dashAzValCol) { dashAzValCol.style.display = ''; dashAzValCol.classList.remove('col-12'); dashAzValCol.classList.add('col-6'); }
-        if(dashElMapCol) { dashElMapCol.style.display = ''; dashElMapCol.classList.remove('col-12'); dashElMapCol.classList.add('col-6'); }
-        if(dashElValCol) { dashElValCol.style.display = ''; dashElValCol.classList.remove('col-12'); dashElValCol.classList.add('col-6'); }
-    }
-
-    populateLogs();
-    fetchApiData();
-    showToast('info', 'Switched to ' + (panelId === 'panel1' ? 'Array Alpha (Dual Axis)' : 'Array Beta (Single Axis)'));
-}
-const pageTitles = {
-    'dashboard': 'Main Dashboard',
-    'tracker': 'Panel Tracking',
-    'charts': 'Charts & Analytics',
-    'logs': 'Recent Logs',
-    'settings': 'Settings'
-};
-function navigateTo(viewId, navElement) {
-    document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active', 'panel-switch-anim'));
-    document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
-    const targetView = document.getElementById('view-' + viewId);
-    targetView.classList.add('active');
-    void targetView.offsetWidth;
-    targetView.classList.add('panel-switch-anim');
-    navElement.classList.add('active');
-    document.getElementById('top-title').innerText = pageTitles[viewId];
-    Object.values(chartInstances).forEach(chart => chart.resize());
-}
-Chart.defaults.font.family = "'Inter', sans-serif";
-Chart.defaults.color = '#64748B';
-const chartInstances = {};
-function initCharts() {
-    const ctxPower = document.getElementById('chartDashPower').getContext('2d');
-    chartInstances.dashPower = new Chart(ctxPower, {
-        type: 'line',
-        data: {
-            labels: ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', 'Now'],
-            datasets: [{
-                label: 'Power (W)',
-                data: [1000, 2500, 3800, 4300, 4100, 2800, 1200, 4250],
-                borderColor: '#EAB308',
-                backgroundColor: 'rgba(234, 179, 8, 0.1)',
-                borderWidth: 3,
-                tension: 0.4,
-                pointBackgroundColor: '#EAB308',
-                fill: true
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [4, 4] } }, x: { grid: { display: false } } } }
-    });
-    const ctxVA = document.getElementById('chartDashVA').getContext('2d');
-    chartInstances.dashVA = new Chart(ctxVA, {
-        type: 'line',
-        data: {
-            labels: ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', 'Now'],
-            datasets: [
-                { label: 'Voltage (V)', data: [310, 320, 340, 345, 343, 330, 315, 345], borderColor: '#3B82F6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0 },
-                { label: 'Current (A)', data: [2, 5, 10, 12.5, 11, 8, 3, 12.3], borderColor: '#22C55E', backgroundColor: 'rgba(34, 197, 94, 0.1)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true } } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
-    });
-    const ctxAnaVA = document.getElementById('chartAnaVA').getContext('2d');
-    chartInstances.anaVA = new Chart(ctxAnaVA, {
-        type: 'line',
-        data: {
-            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            datasets: [
-                { label: 'Voltage Output', data: [70, 480, 380, 250, 400, 500, 520], borderColor: '#854D0E', borderWidth: 3, tension: 0.5, pointRadius: 0 },
-                { label: 'Current Flow', data: [ -40, 150, 80, 100, 50, 200, 180], borderColor: '#475569', borderWidth: 2, tension: 0.5, pointRadius: 0 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { borderDash: [4, 4] } }, x: { grid: { display: false } } } }
-    });
-    const ctxConsump = document.getElementById('chartAnaConsumption').getContext('2d');
-    chartInstances.anaConsump = new Chart(ctxConsump, {
-        type: 'bar',
-        data: {
-            labels: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'],
-            datasets: [{ data: [30, 40, 20, 85, 50, 35], backgroundColor: ['#E2E8F0', '#E2E8F0', '#E2E8F0', '#A16207', '#E2E8F0', '#E2E8F0'], borderRadius: 4 }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { display: false } } }
-    });
-}
-window.renderPage = function(page) {
-    if(page < 1) return;
-    renderLogs(currentFilteredData, page);
+const PAGE_TITLES = {
+    dashboard: 'Main Dashboard',
+    tracker: 'Panel Tracking',
+    charts: 'Charts & Analytics',
+    logs: 'Recent Logs',
+    settings: 'Settings',
 };
 
-function renderLogs(data, page = 1) {
-    currentFilteredData = data;
-    currentPage = page;
-    
-    const tbody = document.getElementById('log-table-body');
-    if(!tbody) return;
-    tbody.innerHTML = '';
-    
-    const totalItems = data.length;
-    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
-    
-    if (currentPage > totalPages) currentPage = totalPages;
-    if (currentPage < 1) currentPage = 1;
-    
-    const startIdx = (currentPage - 1) * itemsPerPage;
-    const endIdx = Math.min(startIdx + itemsPerPage, totalItems);
-    
-    const pageData = data.slice(startIdx, endIdx);
-    
-    pageData.forEach((log, index) => {
-        let badgeClass = 'badge-optimal';
-        let trStyle = '';
-        let vClass = '';
-        
-        let status = 'Unknown';
-        if (log.panel_id === 'panel1') {
-            let avgLdr = (log.ldr_nw + log.ldr_ne + log.ldr_sw + log.ldr_se) / 4;
-            let maxDiff = Math.max(Math.abs(log.ldr_nw - log.ldr_ne), Math.abs(log.ldr_sw - log.ldr_se), Math.abs(log.ldr_nw - log.ldr_sw), Math.abs(log.ldr_ne - log.ldr_se));
-            let diffMargin = avgLdr > 0 ? (maxDiff / avgLdr) * 100 : 0;
-            
-            if (log.tracking_mode === 'Manual') status = 'Manual Override';
-            else if (diffMargin <= 15) status = 'Sun Locked';
-            else status = 'Tracking...';
-        } else {
-            let diff = Math.abs(log.azimuth - log.elevation);
-            if (log.tracking_mode === 'Manual') status = 'Manual Override';
-            else if (diff <= 2) status = 'Sun Locked';
-            else status = 'Tracking...';
-        }
-        
-        if(status === 'Tracking...') { badgeClass = 'badge-warning'; trStyle = 'background-color: #FEF9C3;'; vClass="text-warning fw-bold";}
-        if(status === 'Manual Override') { badgeClass = 'badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle'; trStyle = 'background-color: #F3F4F6;'; vClass="text-secondary fw-bold";}
-        if(status === 'Sun Locked') { badgeClass = 'badge-optimal'; }
-        
-        let dateObj = new Date(log.created_at);
-        let timeStr = dateObj.toLocaleString('en-CA', { timeZone: 'Asia/Makassar', hour12: false }).replace(',', '');
-        
-        tbody.innerHTML += `
-            <tr style="${trStyle} animation: fadeOpacity 0.4s ease forwards; animation-delay: ${index * 0.05}s; opacity: 0;">
-                <td class="text-start ps-4">${timeStr}</td>
-                <td class="fw-semibold">Node-${log.id}</td>
-                <td class="${vClass}">${log.voltage}</td>
-                <td class="${vClass}">${log.current}</td>
-                <td>${log.power_output}</td>
-                <td><span class="${badgeClass}"><div style="display:inline-block; width:6px; height:6px; background:currentColor; border-radius:50%; margin-right:4px;"></div>${status}</span></td>
-                <td class="pe-4"><button class="btn btn-sm btn-light text-muted"><span class="material-symbols-rounded" style="font-size:16px;">more_horiz</span></button></td>
-            </tr>
-        `;
+const PANELS = {
+    panel1: { name: 'Array Alpha', label: 'Array Alpha (Dual Axis)', title: 'Dual-Axis Tracker Array', type: 'Dual-Axis Tracking', algorithm: 'LDR Sensors' },
+    panel2: { name: 'Array Beta', label: 'Array Beta (Single Axis)', title: 'Single-Axis Tracker Array', type: 'Single-Axis Tracking', algorithm: 'Astronomical Algorithm' },
+};
+
+const COMMAND_LABELS = { Up: 'Tilt up', Down: 'Tilt down', Left: 'Rotate left', Right: 'Rotate right', Reset: 'Reset position' };
+const COMPASS = ['North', 'North-East', 'East', 'South-East', 'South', 'South-West', 'West', 'North-West'];
+const STATUS_CLASSES = { 'Sun Locked': 'is-locked', 'Tracking...': 'is-tracking', 'Manual Override': 'is-manual', Stopped: 'is-stopped' };
+const ROW_CLASSES = { 'Tracking...': 'log-row-tracking', 'Manual Override': 'log-row-manual', Stopped: 'log-row-stopped' };
+const WEATHER_ICONS = { 'Clear Sky': 'light_mode', 'Partly Cloudy': 'partly_cloudy_day', Overcast: 'cloud', Foggy: 'foggy', Rain: 'rainy', Showers: 'rainy', Thunderstorm: 'thunderstorm' };
+
+const state = {
+    panelId: PANELS[localStorage.getItem('panelId')] ? localStorage.getItem('panelId') : 'panel1',
+    view: 'dashboard',
+    pollMs: Number(localStorage.getItem('pollMs')) || 2000,
+    pollTimer: null,
+    latest: null,
+    connection: 'waiting',
+    range: '24h',
+    charts: {},
+    logPage: 1,
+    logRows: [],
+    logFilters: { start: '', end: '', status: '' },
+    pickers: {},
+    selects: {},
+};
+
+const byId = (id) => document.getElementById(id);
+
+function setText(id, value) {
+    const el = byId(id);
+    if (el) el.textContent = value;
+}
+
+function formatNumber(value, decimals = 1) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '--';
+    return Number(value).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function escapeHtml(value) {
+    const div = document.createElement('div');
+    div.textContent = value ?? '';
+    return div.innerHTML;
+}
+
+function formatDateTime(iso) {
+    return new Date(iso).toLocaleString('sv-SE', { timeZone: TIMEZONE });
+}
+
+async function requestJson(url, options = {}) {
+    const response = await fetch(url, {
+        ...options,
+        headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) },
     });
-    
-    renderPagination(totalItems, totalPages, startIdx, endIdx);
-}
-
-function renderPagination(totalItems, totalPages, startIdx, endIdx) {
-    const info = document.getElementById('pagination-info');
-    const controls = document.getElementById('pagination-controls');
-    
-    if(info) {
-        if(totalItems === 0) info.innerText = "Showing 0 entries";
-        else info.innerText = `Showing ${startIdx + 1} to ${endIdx} of ${totalItems.toLocaleString()} entries`;
-    }
-    
-    if(controls) {
-        controls.innerHTML = '';
-        if(totalItems === 0) return;
-        
-        let html = '';
-        
-        // Prev button
-        if(currentPage === 1) {
-            html += `<li class="page-item disabled"><a class="page-link" href="#">&laquo;</a></li>`;
-        } else {
-            html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(${currentPage - 1}); return false;">&laquo;</a></li>`;
-        }
-        
-        // Page numbers
-        let startPage = Math.max(1, currentPage - 2);
-        let endPage = Math.min(totalPages, currentPage + 2);
-        
-        if (startPage > 1) {
-            html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(1); return false;">1</a></li>`;
-            if (startPage > 2) html += `<li class="page-item disabled"><a class="page-link text-dark" href="#">...</a></li>`;
-        }
-        
-        for(let i = startPage; i <= endPage; i++) {
-            if(i === currentPage) {
-                html += `<li class="page-item active"><a class="page-link bg-warning border-warning text-dark" href="#">${i}</a></li>`;
-            } else {
-                html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(${i}); return false;">${i}</a></li>`;
-            }
-        }
-        
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) html += `<li class="page-item disabled"><a class="page-link text-dark" href="#">...</a></li>`;
-            html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(${totalPages}); return false;">${totalPages}</a></li>`;
-        }
-        
-        // Next button
-        if(currentPage === totalPages) {
-            html += `<li class="page-item disabled"><a class="page-link" href="#">&raquo;</a></li>`;
-        } else {
-            html += `<li class="page-item"><a class="page-link text-dark" href="#" onclick="window.renderPage(${currentPage + 1}); return false;">&raquo;</a></li>`;
-        }
-        
-        controls.innerHTML = html;
-    }
-}
-
-async function populateLogs() {
+    let body = null;
     try {
-        let url = '/api/tracker/logs?panel_id=' + window.currentPanelId;
-        const startDate = document.getElementById('filter-date-start')?.value;
-        const endDate = document.getElementById('filter-date-end')?.value;
-        if (startDate && endDate) {
-            // Reformat m/d/Y to Y-m-d if needed, or rely on Carbon parsing
-            url += `&start_date=${startDate}&end_date=${endDate}`;
-        }
-        
-        const response = await fetch(url);
-        const json = await response.json();
-        if(json.success && json.data) {
-            window.logDataCache = json.data;
-            renderLogs(json.data);
-            updateCharts(json.data);
-        }
-    } catch(err) {
-        console.error(err);
-    }
-}
-
-function updateCharts(data) {
-    if(!data || data.length === 0) return;
-    let chartData = [...data].reverse().slice(-15);
-    
-    let labels = chartData.map(log => {
-        let d = new Date(log.created_at);
-        return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-    });
-    
-    let voltage = chartData.map(log => log.voltage);
-    let current = chartData.map(log => log.current);
-    let power = chartData.map(log => log.power_output);
-    
-    if(chartInstances.dashPower) {
-        chartInstances.dashPower.data.labels = labels;
-        chartInstances.dashPower.data.datasets[0].data = power;
-        chartInstances.dashPower.update();
-    }
-    
-    if(chartInstances.dashVA) {
-        chartInstances.dashVA.data.labels = labels;
-        chartInstances.dashVA.data.datasets[0].data = voltage;
-        chartInstances.dashVA.data.datasets[1].data = current;
-        chartInstances.dashVA.update();
-    }
-    
-    if(chartInstances.anaVA) {
-        chartInstances.anaVA.data.labels = labels;
-        chartInstances.anaVA.data.datasets[0].data = voltage;
-        chartInstances.anaVA.data.datasets[1].data = current;
-        chartInstances.anaVA.update();
-    }
-    
-    if(chartInstances.anaConsump) {
-        chartInstances.anaConsump.data.labels = labels;
-        chartInstances.anaConsump.data.datasets[0].data = power;
-        let bgColors = Array(labels.length).fill('#E2E8F0');
-        if(bgColors.length > 0) bgColors[bgColors.length - 1] = '#A16207';
-        chartInstances.anaConsump.data.datasets[0].backgroundColor = bgColors;
-        chartInstances.anaConsump.update();
-    }
-}
-let simState = {
-    voltage: 345.2, current: 12.3, power: 4250, battery: 85,
-    azimuth: 180.0, elevation: 45.0,
-    ldrNW: 885, ldrNE: 912, ldrSW: 860, ldrSE: 874,
-    mot1Load: 2.4, mot2Load: 3.1
-};
-function animateValueChange(id, newValue, decimals = 1) {
-    const el = document.getElementById(id);
-    if(!el) return;
-    const currentVal = parseFloat(el.innerText.replace(/,/g, ''));
-    el.innerText = newValue.toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
-    el.classList.remove('val-up', 'val-down');
-    void el.offsetWidth;
-    if(newValue > currentVal) el.classList.add('val-up');
-    else if(newValue < currentVal) el.classList.add('val-down');
-    setTimeout(() => { el.classList.remove('val-up', 'val-down'); }, 400);
-}
-async function fetchApiData() {
-    try {
-        const response = await fetch('/api/tracker/latest?panel_id=' + window.currentPanelId);
-        const json = await response.json();
-        
-        if (json.success && json.data) {
-            const data = json.data;
-            
-            simState.voltage = data.voltage;
-            simState.current = data.current;
-            simState.power = data.power_output;
-            simState.battery = data.battery_percentage;
-            simState.azimuth = data.azimuth;
-            simState.elevation = data.elevation;
-            simState.ldrNW = data.ldr_nw || simState.ldrNW;
-            simState.ldrNE = data.ldr_ne || simState.ldrNE;
-            simState.ldrSW = data.ldr_sw || simState.ldrSW;
-            simState.ldrSE = data.ldr_se || simState.ldrSE;
-            simState.mot1Load = data.motor1_load || simState.mot1Load;
-            simState.mot2Load = data.motor2_load || simState.mot2Load;
-            let dateObj = new Date(data.created_at);
-            if(document.getElementById('dash-time')) {
-                document.getElementById('dash-time').innerText = dateObj.toLocaleTimeString('en-GB', { timeZone: 'Asia/Makassar' });
-            }
-            if(document.getElementById('dash-date')) {
-                document.getElementById('dash-date').innerText = dateObj.toLocaleDateString('en-US', { timeZone: 'Asia/Makassar', weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-            }
-
-            if(data.tracking_mode) {
-                if(document.getElementById('dash-mode')) document.getElementById('dash-mode').innerText = data.tracking_mode;
-                let btnAuto = document.getElementById('btn-trk-auto');
-                let btnManual = document.getElementById('btn-trk-manual');
-                let dPad = document.getElementById('d-pad-container');
-                if(btnAuto && btnManual) {
-                    if(data.tracking_mode === 'Automatic') {
-                        btnAuto.className = "btn btn-warning rounded-pill flex-grow-1 fw-semibold transition-all";
-                        btnManual.className = "btn text-muted rounded-pill flex-grow-1 fw-semibold transition-all";
-                        if(dPad) { dPad.style.opacity = '0.5'; dPad.style.pointerEvents = 'none'; }
-                    } else if(data.tracking_mode === 'Manual') {
-                        btnAuto.className = "btn text-muted rounded-pill flex-grow-1 fw-semibold transition-all";
-                        btnManual.className = "btn btn-warning rounded-pill flex-grow-1 fw-semibold transition-all";
-                        if(dPad) { dPad.style.opacity = '1'; dPad.style.pointerEvents = 'auto'; }
-                    }
-                }
-            }
-            if(document.getElementById('dash-mode') && data.tracking_mode) {
-                document.getElementById('dash-mode').innerText = data.tracking_mode;
-            }
-            animateValueChange('dash-power', simState.power, 0);
-            animateValueChange('dash-voltage', simState.voltage, 1);
-            animateValueChange('dash-current', simState.current, 1);
-            animateValueChange('dash-azimuth', simState.azimuth, 1);
-            animateValueChange('dash-elevation', simState.elevation, 1);
-            document.getElementById('map-az').innerText = simState.azimuth.toFixed(0);
-            if(document.getElementById('dash-azimuth-ptr')) document.getElementById('dash-azimuth-ptr').style.transform = `rotate(${simState.azimuth}deg)`;
-            if(document.getElementById('dash-elevation-ptr')) document.getElementById('dash-elevation-ptr').style.transform = `rotate(${simState.elevation - 90}deg)`;
-            if(document.getElementById('map-el')) document.getElementById('map-el').innerText = simState.elevation.toFixed(0);
-            
-            animateValueChange('dash-ldr-tl', simState.ldrNW, 0);
-            animateValueChange('dash-ldr-tr', simState.ldrNE, 0);
-            animateValueChange('dash-ldr-bl', simState.ldrSW, 0);
-            animateValueChange('dash-ldr-br', simState.ldrSE, 0);
-            
-            let avgLdr = (simState.ldrNW + simState.ldrNE + simState.ldrSW + simState.ldrSE) / 4;
-            let diffMargin = 0;
-            if (avgLdr > 0) {
-                let maxDiff = Math.max(Math.abs(simState.ldrNW - simState.ldrNE), Math.abs(simState.ldrSW - simState.ldrSE), Math.abs(simState.ldrNW - simState.ldrSW), Math.abs(simState.ldrNE - simState.ldrSE));
-                diffMargin = (maxDiff / avgLdr) * 100;
-                if (diffMargin > 100) diffMargin = 100;
-            }
-            let diffEl = document.getElementById('dash-diff-margin');
-            if (diffEl) {
-                diffEl.innerText = diffMargin.toFixed(1) + '%';
-                if (diffMargin < 10) diffEl.className = 'fw-bold text-success fs-5';
-                else if (diffMargin < 30) diffEl.className = 'fw-bold text-warning fs-5';
-                else diffEl.className = 'fw-bold text-danger fs-5';
-            }
-            if(document.getElementById('trk-azimuth-ptr')) document.getElementById('trk-azimuth-ptr').style.transform = `rotate(${simState.azimuth}deg)`;
-            if(document.getElementById('trk-elevation-ptr')) document.getElementById('trk-elevation-ptr').style.transform = `rotate(${simState.elevation - 90}deg)`;
-            
-            animateValueChange('trk-azimuth', simState.azimuth, 0);
-            animateValueChange('trk-elevation', simState.elevation, 0);
-            animateValueChange('trk-ldr-nw', simState.ldrNW, 0);
-            animateValueChange('trk-ldr-ne', simState.ldrNE, 0);
-            animateValueChange('trk-ldr-sw', simState.ldrSW, 0);
-            animateValueChange('trk-ldr-se', simState.ldrSE, 0);
-            animateValueChange('trk-mot1-load', simState.mot1Load, 1);
-            animateValueChange('trk-mot2-load', simState.mot2Load, 1);
-            let maxLdr = Math.max(simState.ldrNW, simState.ldrNE, simState.ldrSW, simState.ldrSE);
-            ['nw', 'ne', 'sw', 'se'].forEach(dir => {
-                ['dash-box-ldr', 'trk-box-ldr'].forEach(prefix => {
-                    const box = document.getElementById(`${prefix}-${dir}`);
-                    if(box) {
-                        const val = simState[`ldr${dir.toUpperCase()}`];
-                        if(val === maxLdr) {
-                            box.classList.remove('bg-primary', 'bg-opacity-10', 'border-primary-subtle');
-                            box.classList.add('bg-warning', 'bg-opacity-25', 'border-warning-subtle');
-                            box.querySelector('.ldr-label').classList.add('text-dark');
-                        } else {
-                            box.classList.remove('bg-warning', 'bg-opacity-25', 'border-warning-subtle');
-                            box.classList.add('bg-primary', 'bg-opacity-10', 'border-primary-subtle');
-                            box.querySelector('.ldr-label').classList.remove('text-dark');
-                        }
-                    }
-                });
-            });
-        }
-        
-        let statusBadge = document.getElementById('system-status-badge');
-        let statusDot = document.getElementById('system-status-dot');
-        let statusText = document.getElementById('system-status-text');
-        
-        if (statusBadge && statusDot && statusText) {
-            let isOnline = false;
-            if (json.success && json.data && json.data.created_at) {
-                let diffSecs = (new Date() - new Date(json.data.created_at)) / 1000;
-                if (diffSecs <= 180) isOnline = true;
-            }
-            
-            if (isOnline) {
-                statusBadge.style.backgroundColor = 'rgba(34, 197, 94, 0.1)';
-                statusBadge.style.color = '#22C55E';
-                statusDot.style.backgroundColor = '#22C55E';
-                statusText.innerText = 'System Active';
-            } else {
-                statusBadge.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-                statusBadge.style.color = '#EF4444';
-                statusDot.style.backgroundColor = '#EF4444';
-                statusText.innerText = 'System Offline';
-            }
-        }
+        body = await response.json();
     } catch (error) {
-        console.error("Gagal mengambil data dari API: ", error);
+        body = null;
     }
-}
-async function setTrackerMode(modeStr, forcePanel = null) {
-    let target = forcePanel || window.currentPanelId;
-    try {
-        await fetch('/api/tracker/mode', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ mode: modeStr, panel_id: target })
-        });
-        fetchApiData();
-    } catch(err) { console.error(err); }
+    if (!response.ok) throw new Error(body?.message || `Request failed (${response.status})`);
+    return body;
 }
 
-async function sendManualCommand(dir) {
-    try {
-        await fetch('/api/tracker/command', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ command: dir, panel_id: window.currentPanelId })
-        });
-        console.log("Command sent:", dir);
-    } catch(err) { console.error(err); }
-}
-
-window.onload = () => {
-    // Initialize theme
-    let savedTheme = localStorage.getItem('theme') || 'light';
-    applyTheme(savedTheme);
-    let themeSelect = document.getElementById('theme-select');
-    if(themeSelect) themeSelect.value = savedTheme;
-
-    if(document.getElementById('btn-mode-auto')) {
-        document.getElementById('btn-mode-auto').onclick = () => setTrackerMode('Automatic', 'all');
-    }
-    if(document.getElementById('btn-mode-stop')) {
-        document.getElementById('btn-mode-stop').onclick = () => setTrackerMode('Manual', 'all');
-    }
-    if(document.getElementById('btn-mode-reset')) {
-        document.getElementById('btn-mode-reset').onclick = () => setTrackerMode('Reset', 'all');
-    }
-    if (document.getElementById('panelSelector')) {
-        document.getElementById('panelSelector').value = window.currentPanelId;
-    }
-    switchPanel(window.currentPanelId);
-
-    initCharts();
-    populateLogs();
-    
-    if(typeof flatpickr !== 'undefined') {
-        flatpickr("#filter-date-start", { dateFormat: "m/d/Y" });
-        flatpickr("#filter-date-end", { dateFormat: "m/d/Y" });
-    }
-    
-    if(typeof TomSelect !== 'undefined') {
-        new TomSelect("#filter-status", { create: false, controlInput: null });
-        new TomSelect("#filter-subsystem", { create: false, controlInput: null });
-    }
-    if(document.getElementById('btn-mode-auto')) {
-        document.getElementById('btn-mode-auto').onclick = () => setTrackerMode('Automatic');
-    }
-    if(document.getElementById('btn-mode-reset')) {
-        document.getElementById('btn-mode-reset').onclick = () => setTrackerMode('Reset');
-    }
-    if(document.getElementById('btn-mode-stop')) {
-        document.getElementById('btn-mode-stop').onclick = () => setTrackerMode('Stop');
-    }
-    setInterval(fetchApiData, 2000);
-    setInterval(populateLogs, 10000);
+const apiGet = (path, params = {}) => {
+    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== '' && value != null));
+    return requestJson(`/api/tracker/${path}?${query}`);
 };
+
+const apiPost = (path, payload) => requestJson(`/api/tracker/${path}`, { method: 'POST', body: JSON.stringify(payload) });
 
 function showToast(type, message) {
-    const container = document.getElementById('toast-container');
-    if(!container) return;
-    
+    const icons = { success: ['check_circle', '#22C55E'], warning: ['warning', '#F59E0B'], error: ['error', '#EF4444'], info: ['info', '#3B82F6'] };
+    const [iconName, color] = icons[type] || icons.info;
     const toast = document.createElement('div');
     toast.className = 'toast-custom';
-    
-    let icon = 'info';
-    let color = '#3B82F6';
-    if(type === 'success') { icon = 'check_circle'; color = '#22C55E'; }
-    if(type === 'warning') { icon = 'warning'; color = '#F59E0B'; }
-    if(type === 'error') { icon = 'error'; color = '#EF4444'; }
-    
-    toast.innerHTML = `<span class="material-symbols-rounded" style="color: ${color}">${icon}</span> <span>${message}</span>`;
-    
-    container.appendChild(toast);
-    
+    const icon = document.createElement('span');
+    icon.className = 'material-symbols-rounded';
+    icon.style.color = color;
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = iconName;
+    const text = document.createElement('span');
+    text.textContent = message;
+    toast.append(icon, text);
+    byId('toast-container').appendChild(toast);
     setTimeout(() => {
         toast.classList.add('hide');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
 
-function applyTheme(theme) {
-    let activeTheme = theme;
-    if (theme === 'auto') {
-        activeTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+/* Navigation */
+
+function refreshView(view) {
+    if (view === 'dashboard') loadDashboardSeries();
+    if (view === 'charts') {
+        loadAnalyticsSeries();
+        loadWeatherHistory();
     }
-    document.documentElement.setAttribute('data-bs-theme', activeTheme);
-    
-    let icon = document.getElementById('theme-toggle-icon');
-    if (icon) {
-        icon.innerText = activeTheme === 'dark' ? 'light_mode' : 'dark_mode';
+    if (view === 'logs') loadLogs();
+}
+
+function navigateTo(view, { updateHash = true } = {}) {
+    if (!PAGE_TITLES[view]) view = 'dashboard';
+    state.view = view;
+
+    document.querySelectorAll('.page-view').forEach((el) => {
+        el.classList.remove('active', 'panel-switch-anim');
+    });
+    document.querySelectorAll('.nav-link[data-view]').forEach((el) => {
+        const current = el.dataset.view === view;
+        el.classList.toggle('active', current);
+        if (current) el.setAttribute('aria-current', 'page');
+        else el.removeAttribute('aria-current');
+    });
+    const target = byId(`view-${view}`);
+    target.classList.add('active');
+    void target.offsetWidth;
+    target.classList.add('panel-switch-anim');
+    setText('top-title', PAGE_TITLES[view]);
+    if (updateHash && location.hash !== `#${view}`) history.replaceState(null, '', `#${view}`);
+
+    Object.values(state.charts).forEach((chart) => chart.resize());
+    refreshView(view);
+}
+
+function setDisplay(id, visible) {
+    const el = byId(id);
+    if (!el) return;
+    if (visible) el.style.display = '';
+    else el.style.setProperty('display', 'none', 'important');
+}
+
+function setColumn(id, single, doubleClass, singleClass) {
+    const el = byId(id);
+    if (!el) return;
+    el.classList.toggle(doubleClass, !single);
+    el.classList.toggle(singleClass, single);
+}
+
+function switchPanel(panelId, { silent = false } = {}) {
+    if (!PANELS[panelId]) return;
+    state.panelId = panelId;
+    localStorage.setItem('panelId', panelId);
+
+    const panel = PANELS[panelId];
+    const single = panelId === 'panel2';
+
+    setText('tracker-panel-title', panel.title);
+    setText('algorithm-type', panel.algorithm);
+    setText('panelDropdownText', panel.name);
+    setText('panelDropdownAxis', ` ${panel.label.slice(panel.name.length + 1)}`);
+    state.selects.subsystem?.setValue(panelId, true);
+
+    ['azimuth-map-col', 'azimuth-data-card', 'dash-azimuth-map-col', 'dash-azimuth-val-col', 'dash-ldr-widget', 'trk-ldr-widget']
+        .forEach((id) => setDisplay(id, !single));
+    ['btn-manual-left', 'btn-manual-right'].forEach((id) => {
+        byId(id).style.visibility = single ? 'hidden' : 'visible';
+    });
+    ['elevation-map-col', 'elevation-data-card', 'dash-elevation-map-col', 'dash-elevation-val-col']
+        .forEach((id) => setColumn(id, single, 'col-6', 'col-12'));
+
+    document.querySelectorAll('[data-panel]').forEach((el) => {
+        el.classList.toggle('active', el.dataset.panel === panelId);
+    });
+    document.querySelectorAll('.page-view.active').forEach((el) => {
+        el.classList.remove('panel-switch-anim');
+        void el.offsetWidth;
+        el.classList.add('panel-switch-anim');
+    });
+
+    state.latest = null;
+    state.logPage = 1;
+    renderLatest(null);
+    fetchLatest();
+    refreshView(state.view);
+    if (!silent) showToast('info', `Switched to ${panel.label}`);
+}
+
+/* Live readings */
+
+function animateValueChange(id, newValue, decimals = 1) {
+    const el = byId(id);
+    if (!el) return;
+    if (newValue === null || newValue === undefined) {
+        el.textContent = '--';
+        return;
+    }
+    const value = Number(newValue);
+    const previous = parseFloat(el.textContent.replace(/,/g, ''));
+    el.textContent = formatNumber(value, decimals);
+    el.classList.remove('val-up', 'val-down');
+    if (Number.isNaN(previous)) return;
+    void el.offsetWidth;
+    if (value > previous) el.classList.add('val-up');
+    else if (value < previous) el.classList.add('val-down');
+    setTimeout(() => el.classList.remove('val-up', 'val-down'), 400);
+}
+
+function renderConnection(kind, text) {
+    state.connection = kind;
+    const badge = byId('system-status-badge');
+    badge.classList.remove('is-online', 'is-offline', 'is-waiting');
+    badge.classList.add(`is-${kind}`);
+    setText('system-status-text', text);
+}
+
+function renderModeControls(mode) {
+    const label = mode === 'Stop' ? 'Stopped' : mode;
+    setText('dash-mode', label || '--');
+
+    const auto = mode === 'Automatic';
+    const manual = mode === 'Manual';
+    const stopped = mode === 'Stop';
+
+    const dashAuto = byId('btn-mode-auto');
+    dashAuto.className = `btn fw-semibold px-4 ${auto ? 'btn-warning' : 'btn-outline-warning text-warning'}`;
+    dashAuto.setAttribute('aria-pressed', String(auto));
+    const dashStop = byId('btn-mode-stop');
+    dashStop.className = `btn fw-semibold ${stopped ? 'btn-danger' : 'btn-outline-danger'}`;
+    dashStop.setAttribute('aria-pressed', String(stopped));
+
+    const pill = (active) => `btn rounded-pill flex-grow-1 fw-semibold transition-all ${active ? 'btn-warning' : 'text-muted'}`;
+    const trkAuto = byId('btn-trk-auto');
+    trkAuto.className = pill(auto);
+    trkAuto.setAttribute('aria-pressed', String(auto));
+    const trkManual = byId('btn-trk-manual');
+    trkManual.className = pill(manual);
+    trkManual.setAttribute('aria-pressed', String(manual));
+
+    const pad = byId('d-pad-container');
+    pad.style.opacity = manual ? '1' : '0.5';
+    pad.querySelectorAll('.d-btn').forEach((button) => { button.disabled = !manual; });
+    setText('d-pad-note', manual ? 'Each press is sent the next time the device reports in.' : 'Switch to Manual to move the panel.');
+}
+
+function compassName(degrees) {
+    return COMPASS[Math.round((((degrees % 360) + 360) % 360) / 45) % 8];
+}
+
+function renderPosition(data) {
+    const azimuth = data ? data.azimuth : null;
+    const elevation = data ? data.elevation : null;
+
+    animateValueChange('dash-azimuth', azimuth, 1);
+    animateValueChange('dash-elevation', elevation, 1);
+    animateValueChange('trk-azimuth', azimuth, 0);
+    animateValueChange('trk-elevation', elevation, 0);
+    setText('map-az', formatNumber(azimuth, 0));
+    setText('map-el', formatNumber(elevation, 0));
+
+    ['dash', 'trk'].forEach((prefix) => {
+        byId(`${prefix}-azimuth-ptr`).style.transform = `rotate(${azimuth ?? 0}deg)`;
+        byId(`${prefix}-elevation-ptr`).style.transform = `rotate(${(elevation ?? 90) - 90}deg)`;
+    });
+
+    setText('trk-azimuth-lbl', data ? `Facing ${compassName(azimuth)}` : 'No data');
+    setText('trk-elevation-lbl', data ? 'Reported panel tilt' : 'No data');
+}
+
+function renderLdr(data) {
+    const values = {
+        nw: data ? data.ldr_nw : null,
+        ne: data ? data.ldr_ne : null,
+        sw: data ? data.ldr_sw : null,
+        se: data ? data.ldr_se : null,
+    };
+
+    animateValueChange('dash-ldr-tl', values.nw, 0);
+    animateValueChange('dash-ldr-tr', values.ne, 0);
+    animateValueChange('dash-ldr-bl', values.sw, 0);
+    animateValueChange('dash-ldr-br', values.se, 0);
+    Object.entries(values).forEach(([key, value]) => animateValueChange(`trk-ldr-${key}`, value, 0));
+
+    const readings = data ? Object.values(values).map(Number) : [];
+    const max = readings.length ? Math.max(...readings) : null;
+    Object.entries(values).forEach(([key, value]) => {
+        ['dash-box-ldr', 'trk-box-ldr'].forEach((prefix) => {
+            const box = byId(`${prefix}-${key}`);
+            const highlighted = max !== null && max > 0 && Number(value) === max;
+            box.classList.toggle('bg-warning', highlighted);
+            box.classList.toggle('bg-opacity-25', highlighted);
+            box.classList.toggle('border-warning-subtle', highlighted);
+            box.classList.toggle('bg-primary', !highlighted);
+            box.classList.toggle('bg-opacity-10', !highlighted);
+            box.classList.toggle('border-primary-subtle', !highlighted);
+        });
+    });
+
+    let margin = null;
+    if (data) {
+        const [nw, ne, sw, se] = readings;
+        const average = (nw + ne + sw + se) / 4;
+        if (average > 0) {
+            const maxDiff = Math.max(Math.abs(nw - ne), Math.abs(sw - se), Math.abs(nw - sw), Math.abs(ne - se));
+            margin = Math.min((maxDiff / average) * 100, 100);
+        }
+    }
+    const marginEl = byId('dash-diff-margin');
+    marginEl.textContent = margin === null ? '--' : `${margin.toFixed(1)}%`;
+    marginEl.classList.toggle('text-success', margin !== null && margin < 10);
+    marginEl.classList.toggle('text-warning', margin !== null && margin >= 10 && margin < 30);
+    marginEl.classList.toggle('text-danger', margin !== null && margin >= 30);
+}
+
+function renderLatest(data) {
+    animateValueChange('dash-power', data ? data.power_output : null, 0);
+    animateValueChange('dash-voltage', data ? data.voltage : null, 1);
+    animateValueChange('dash-current', data ? data.current : null, 1);
+
+    if (data) {
+        const date = new Date(data.created_at);
+        setText('dash-time', date.toLocaleTimeString('en-GB', { timeZone: TIMEZONE }));
+        setText('dash-date', date.toLocaleDateString('en-US', { timeZone: TIMEZONE, weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }));
+        setText('trk-last-reading', formatDateTime(data.created_at));
+    } else {
+        setText('dash-time', '--:--:--');
+        setText('dash-date', 'No data yet');
+        setText('trk-last-reading', 'No data yet');
+    }
+
+    const type = PANELS[state.panelId].type;
+    setText('dash-tracking-type', data && data.tracking_mode === 'Stop' ? `${type} Stopped` : `${type} Active`);
+
+    renderModeControls(data ? data.tracking_mode : null);
+    renderPosition(data);
+    renderLdr(data);
+
+    const badge = byId('trk-status-badge');
+    badge.className = `status-pill ${data ? STATUS_CLASSES[data.status] || 'is-none' : 'is-none'}`;
+    badge.textContent = data ? data.status : 'No data';
+}
+
+async function fetchLatest() {
+    const panelId = state.panelId;
+    try {
+        const json = await apiGet('latest', { panel_id: panelId });
+        if (panelId !== state.panelId) return;
+
+        state.latest = json.data;
+        renderLatest(json.data);
+
+        if (!json.data) {
+            renderConnection('waiting', 'No Data Yet');
+            return;
+        }
+        const ageSeconds = (Date.now() - new Date(json.data.created_at).getTime()) / 1000;
+        if (ageSeconds <= OFFLINE_AFTER_SECONDS) renderConnection('online', 'System Active');
+        else renderConnection('offline', 'System Offline');
+    } catch (error) {
+        if (panelId === state.panelId) renderConnection('offline', 'Server Unreachable');
+        console.error('Could not load the latest reading:', error);
     }
 }
 
-function changeTheme(theme) {
-    localStorage.setItem('theme', theme);
-    applyTheme(theme);
-    showToast('info', 'Theme changed to ' + theme);
+function restartPolling() {
+    clearInterval(state.pollTimer);
+    state.pollTimer = setInterval(() => {
+        if (!document.hidden) fetchLatest();
+    }, state.pollMs);
 }
 
-function toggleTheme() {
-    let currentTheme = localStorage.getItem('theme') || 'light';
-    let newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    changeTheme(newTheme);
-    let themeSelect = document.getElementById('theme-select');
-    if(themeSelect) themeSelect.value = newTheme;
+function showSystemNotice() {
+    const name = PANELS[state.panelId].name;
+    if (state.connection === 'online') {
+        showToast('success', `${name} is sending data.`);
+    } else if (state.latest) {
+        showToast('warning', `${name} last reported at ${formatDateTime(state.latest.created_at)} WITA.`);
+    } else if (byId('system-status-text').textContent === 'Server Unreachable') {
+        showToast('error', 'The server cannot be reached.');
+    } else {
+        showToast('info', `${name} has not reported any data yet.`);
+    }
 }
 
-function exportCSV(type) {
-    if(!window.logDataCache || window.logDataCache.length === 0) {
+/* Controls */
+
+async function setTrackerMode(mode) {
+    const panel = PANELS[state.panelId];
+    const buttons = ['btn-mode-auto', 'btn-mode-stop', 'btn-trk-auto', 'btn-trk-manual'].map(byId);
+    buttons.forEach((button) => { button.disabled = true; });
+    try {
+        await apiPost('mode', { mode, panel_id: state.panelId });
+        await fetchLatest();
+        const label = mode === 'Stop' ? 'Stopped' : mode;
+        if (state.latest) showToast('success', `${panel.name} set to ${label}`);
+        else showToast('info', `${panel.name} will use ${label} when it first reports in`);
+    } catch (error) {
+        showToast('error', `Could not change the mode: ${error.message}`);
+    } finally {
+        buttons.forEach((button) => { button.disabled = false; });
+    }
+}
+
+async function sendManualCommand(command) {
+    const panel = PANELS[state.panelId];
+    try {
+        await apiPost('command', { command, panel_id: state.panelId });
+        showToast('success', `${COMMAND_LABELS[command]} queued for ${panel.name}`);
+    } catch (error) {
+        showToast('error', `Could not send the command: ${error.message}`);
+    }
+}
+
+/* Charts */
+
+function chartColors() {
+    const dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+    return dark
+        ? { text: '#A7B4C6', grid: '#3B4A60', power: '#FACC15', dashVoltage: '#60A5FA', dashCurrent: '#4ADE80', voltage: '#FACC15', current: '#94A3B8', bar: '#475569', barLast: '#FACC15', temperature: '#F87171', radiation: '#CA8A04' }
+        : { text: '#64748B', grid: '#E2E8F0', power: '#EAB308', dashVoltage: '#3B82F6', dashCurrent: '#22C55E', voltage: '#854D0E', current: '#475569', bar: '#E2E8F0', barLast: '#A16207', temperature: '#DC2626', radiation: '#CA8A04' };
+}
+
+function axis(colors, overrides = {}) {
+    return { ticks: { color: colors.text, maxTicksLimit: 6 }, grid: { color: colors.grid }, border: { display: false }, ...overrides };
+}
+
+function timeAxis(colors) {
+    return axis(colors, { ticks: { color: colors.text, maxTicksLimit: 7, maxRotation: 0, autoSkip: true }, grid: { display: false } });
+}
+
+function twoAxes(colors, leftTitle, leftColor, rightTitle, rightColor, leftZero = false) {
+    return {
+        x: timeAxis(colors),
+        y: axis(colors, { position: 'left', beginAtZero: leftZero, title: { display: true, text: leftTitle, color: leftColor } }),
+        y1: axis(colors, { position: 'right', beginAtZero: true, grid: { display: false }, title: { display: true, text: rightTitle, color: rightColor } }),
+    };
+}
+
+function initCharts() {
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    const colors = chartColors();
+    const base = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } };
+    const line = (label, color, axisId = 'y', width = 2) => ({ label, data: [], yAxisID: axisId, borderColor: color, backgroundColor: color, borderWidth: width, tension: 0.4, pointRadius: 0, pointHoverRadius: 4 });
+    const legend = { position: 'bottom', labels: { color: colors.text, boxWidth: 10, usePointStyle: true } };
+
+    state.charts.dashPower = new Chart(byId('chartDashPower'), {
+        type: 'line',
+        data: { labels: [], datasets: [{ ...line('Power (W)', colors.power, 'y', 3), fill: true, backgroundColor: 'rgba(234, 179, 8, 0.1)' }] },
+        options: { ...base, plugins: { legend: { display: false } }, scales: { x: timeAxis(colors), y: axis(colors, { beginAtZero: true }) } },
+    });
+    state.charts.dashVA = new Chart(byId('chartDashVA'), {
+        type: 'line',
+        data: { labels: [], datasets: [line('Voltage (V)', colors.dashVoltage), line('Current (A)', colors.dashCurrent, 'y1')] },
+        options: { ...base, plugins: { legend }, scales: twoAxes(colors, 'V', colors.dashVoltage, 'A', colors.dashCurrent) },
+    });
+    state.charts.anaVA = new Chart(byId('chartAnaVA'), {
+        type: 'line',
+        data: { labels: [], datasets: [line('Voltage (V)', colors.voltage, 'y', 3), line('Current (A)', colors.current, 'y1')] },
+        options: { ...base, plugins: { legend: { display: false } }, scales: twoAxes(colors, 'Voltage (V)', colors.voltage, 'Current (A)', colors.current) },
+    });
+    state.charts.anaEnergy = new Chart(byId('chartAnaConsumption'), {
+        type: 'bar',
+        data: { labels: [], datasets: [{ label: 'Estimated energy (Wh)', data: [], backgroundColor: colors.bar, borderRadius: 4 }] },
+        options: { ...base, plugins: { legend: { display: false } }, scales: { x: timeAxis(colors), y: axis(colors, { beginAtZero: true }) } },
+    });
+    state.charts.anaWeather = new Chart(byId('chartAnaWeather'), {
+        type: 'line',
+        data: { labels: [], datasets: [line('Temperature (°C)', colors.temperature), line('Solar radiation (W/m²)', colors.radiation, 'y1')] },
+        options: { ...base, plugins: { legend: { display: false } }, scales: twoAxes(colors, '°C', colors.temperature, 'W/m²', colors.radiation) },
+    });
+}
+
+function colorEnergyBars(chart, colors) {
+    const count = chart.data.labels.length;
+    chart.data.datasets[0].backgroundColor = Array.from({ length: count }, (_, index) => (index === count - 1 ? colors.barLast : colors.bar));
+}
+
+function applyChartTheme() {
+    const { dashPower, dashVA, anaVA, anaEnergy, anaWeather } = state.charts;
+    if (!dashPower) return;
+    const colors = chartColors();
+    const paint = (chart, index, color) => {
+        chart.data.datasets[index].borderColor = color;
+        chart.data.datasets[index].backgroundColor = color;
+    };
+
+    dashPower.data.datasets[0].borderColor = colors.power;
+    dashPower.options.scales = { x: timeAxis(colors), y: axis(colors, { beginAtZero: true }) };
+
+    paint(dashVA, 0, colors.dashVoltage);
+    paint(dashVA, 1, colors.dashCurrent);
+    dashVA.options.plugins.legend.labels.color = colors.text;
+    dashVA.options.scales = twoAxes(colors, 'V', colors.dashVoltage, 'A', colors.dashCurrent);
+
+    paint(anaVA, 0, colors.voltage);
+    paint(anaVA, 1, colors.current);
+    anaVA.options.scales = twoAxes(colors, 'Voltage (V)', colors.voltage, 'Current (A)', colors.current);
+
+    anaEnergy.options.scales = { x: timeAxis(colors), y: axis(colors, { beginAtZero: true }) };
+    colorEnergyBars(anaEnergy, colors);
+
+    paint(anaWeather, 0, colors.temperature);
+    paint(anaWeather, 1, colors.radiation);
+    anaWeather.options.scales = twoAxes(colors, '°C', colors.temperature, 'W/m²', colors.radiation);
+
+    Object.values(state.charts).forEach((chart) => chart.update());
+}
+
+function setChartState(canvasId, message) {
+    const overlay = document.querySelector(`[data-chart-state="${canvasId}"]`);
+    if (!overlay) return;
+    overlay.textContent = message || '';
+    overlay.classList.toggle('visible', Boolean(message));
+}
+
+function seriesLabel(iso, range) {
+    const date = new Date(iso);
+    if (range === '24h') return date.toLocaleTimeString('en-GB', { timeZone: TIMEZONE, hour: '2-digit', minute: '2-digit' });
+    if (range === '7d') return date.toLocaleString('en-GB', { timeZone: TIMEZONE, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('en-GB', { timeZone: TIMEZONE, day: 'numeric', month: 'short' });
+}
+
+function fillVoltageCurrent(chart, labels, points) {
+    chart.data.labels = labels;
+    chart.data.datasets[0].data = points.map((point) => point.voltage);
+    chart.data.datasets[1].data = points.map((point) => point.current);
+    chart.update();
+}
+
+async function loadDashboardSeries() {
+    const panelId = state.panelId;
+    const ids = ['chartDashPower', 'chartDashVA'];
+    if (!state.charts.dashPower.data.labels.length) ids.forEach((id) => setChartState(id, 'Loading chart'));
+    try {
+        const { data } = await apiGet('series', { panel_id: panelId, range: '24h' });
+        if (panelId !== state.panelId) return;
+
+        const labels = data.map((point) => seriesLabel(point.t, '24h'));
+        state.charts.dashPower.data.labels = labels;
+        state.charts.dashPower.data.datasets[0].data = data.map((point) => point.power);
+        state.charts.dashPower.update();
+        fillVoltageCurrent(state.charts.dashVA, labels, data);
+
+        ids.forEach((id) => setChartState(id, data.length ? '' : 'No readings in the last 24 hours'));
+    } catch (error) {
+        if (panelId === state.panelId) ids.forEach((id) => setChartState(id, 'Could not load this chart. It will retry shortly.'));
+        console.error('Could not load the dashboard charts:', error);
+    }
+}
+
+async function loadAnalyticsSeries() {
+    const panelId = state.panelId;
+    const range = state.range;
+    const ids = ['chartAnaVA', 'chartAnaConsumption'];
+    if (!state.charts.anaVA.data.labels.length) ids.forEach((id) => setChartState(id, 'Loading chart'));
+    try {
+        const { data, summary } = await apiGet('series', { panel_id: panelId, range });
+        if (panelId !== state.panelId || range !== state.range) return;
+
+        const labels = data.map((point) => seriesLabel(point.t, range));
+        fillVoltageCurrent(state.charts.anaVA, labels, data);
+
+        const energy = state.charts.anaEnergy;
+        energy.data.labels = labels;
+        energy.data.datasets[0].data = data.map((point) => point.energy_wh);
+        colorEnergyBars(energy, chartColors());
+        energy.update();
+
+        // Energy needs two readings in the same period, or there is no duration to multiply by.
+        const canEstimate = data.some((point) => point.samples > 1);
+        if (canEstimate) {
+            const wh = summary.energy_wh;
+            setText('ana-energy-total', wh >= 1000 ? `${formatNumber(wh / 1000, 2)} kWh` : `${formatNumber(wh, 0)} Wh`);
+        } else {
+            setText('ana-energy-total', '--');
+        }
+
+        setChartState('chartAnaVA', data.length ? '' : 'No readings in this period');
+        let energyMessage = '';
+        if (!data.length) energyMessage = 'No readings in this period';
+        else if (!canEstimate) energyMessage = 'Readings are too far apart to estimate energy for this period';
+        setChartState('chartAnaConsumption', energyMessage);
+    } catch (error) {
+        if (panelId === state.panelId) {
+            setText('ana-energy-total', '--');
+            ids.forEach((id) => setChartState(id, 'Could not load this chart. It will retry shortly.'));
+        }
+        console.error('Could not load the analytics charts:', error);
+    }
+}
+
+/* Weather */
+
+async function loadWeather() {
+    try {
+        const { data, stale } = await apiGet('weather/latest');
+        const icon = byId('weather-icon');
+        if (!data || stale) {
+            setText('weather-desc', 'Unavailable');
+            setText('weather-temp', '');
+            setText('dash-irradiance', '--');
+            icon.textContent = 'cloud';
+            byId('weather-desc').title = data ? `Last recorded ${formatDateTime(data.observed_at)} WITA` : 'No weather recorded yet';
+            return;
+        }
+        setText('weather-desc', data.description);
+        setText('weather-temp', data.temperature === null ? '' : `${data.temperature}°C`);
+        setText('dash-irradiance', formatNumber(data.solar_radiation, 0));
+        byId('weather-desc').title = `Recorded ${formatDateTime(data.observed_at)} WITA`;
+        icon.textContent = WEATHER_ICONS[data.description] || 'cloud';
+        const wet = ['rainy', 'thunderstorm'].includes(icon.textContent);
+        icon.classList.toggle('text-info', wet);
+        icon.classList.toggle('text-warning', !wet);
+    } catch (error) {
+        setText('weather-desc', 'Unavailable');
+        setText('weather-temp', '');
+        setText('dash-irradiance', '--');
+        console.error('Could not load the weather:', error);
+    }
+}
+
+async function loadWeatherHistory() {
+    const range = state.range;
+    const chart = state.charts.anaWeather;
+    if (!chart.data.labels.length) setChartState('chartAnaWeather', 'Loading chart');
+    try {
+        const { data } = await apiGet('weather', { range });
+        if (range !== state.range) return;
+        chart.data.labels = data.map((row) => seriesLabel(row.observed_at, range === '30d' ? '7d' : range));
+        chart.data.datasets[0].data = data.map((row) => row.temperature);
+        chart.data.datasets[1].data = data.map((row) => row.solar_radiation);
+        chart.update();
+        setChartState('chartAnaWeather', data.length ? '' : 'No weather recorded in this period');
+    } catch (error) {
+        setChartState('chartAnaWeather', 'Could not load this chart. It will retry shortly.');
+        console.error('Could not load the weather history:', error);
+    }
+}
+
+/* Logs */
+
+function renderLogMessage(message, withRetry = false) {
+    const body = byId('log-table-body');
+    body.innerHTML = '';
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 8;
+    cell.className = 'log-message';
+    cell.textContent = message;
+    if (withRetry) {
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'btn btn-sm btn-outline-secondary ms-2';
+        retry.textContent = 'Try again';
+        retry.addEventListener('click', () => loadLogs());
+        cell.appendChild(retry);
+    }
+    row.appendChild(cell);
+    body.appendChild(row);
+}
+
+function renderLogRows(rows, animate) {
+    state.logRows = rows;
+    byId('log-table-body').innerHTML = rows.map((log, index) => {
+        const valueClass = log.status === 'Tracking...' ? 'text-warning fw-bold' : log.status === 'Manual Override' ? 'text-secondary fw-bold' : '';
+        return `
+            <tr class="${ROW_CLASSES[log.status] || ''} ${animate ? 'log-row-enter' : ''}" style="${animate ? `animation-delay: ${index * 0.05}s` : ''}">
+                <td class="text-start ps-4 text-nowrap">${escapeHtml(formatDateTime(log.created_at))}</td>
+                <td class="fw-semibold">#${escapeHtml(String(log.id))}</td>
+                <td class="${valueClass}">${formatNumber(log.voltage, 2)}</td>
+                <td class="${valueClass}">${formatNumber(log.current, 2)}</td>
+                <td>${formatNumber(log.power_output, 1)}</td>
+                <td class="text-nowrap">${escapeHtml(log.weather_status || 'Unknown')}</td>
+                <td><span class="status-pill ${STATUS_CLASSES[log.status] || 'is-none'}"><span style="display:inline-block; width:6px; height:6px; background:currentColor; border-radius:50%;"></span>${escapeHtml(log.status)}</span></td>
+                <td class="pe-4"><button type="button" class="btn btn-sm btn-light text-muted" data-log-index="${index}" aria-label="Show details for log ${escapeHtml(String(log.id))}"><span class="material-symbols-rounded" style="font-size:16px;" aria-hidden="true">more_horiz</span></button></td>
+            </tr>`;
+    }).join('');
+}
+
+function renderPagination(meta) {
+    const controls = byId('pagination-controls');
+    const { current_page: current, last_page: last, total, per_page: perPage } = meta;
+
+    if (!total) {
+        setText('pagination-info', 'Showing 0 entries');
+        controls.innerHTML = '';
+        return;
+    }
+
+    const first = (current - 1) * perPage + 1;
+    setText('pagination-info', `Showing ${first.toLocaleString()} to ${Math.min(current * perPage, total).toLocaleString()} of ${total.toLocaleString()} entries`);
+
+    const item = (label, page, { disabled = false, active = false, ariaLabel = '' } = {}) => {
+        const linkClass = active ? 'page-link bg-warning border-warning text-dark' : `page-link ${disabled ? '' : 'text-dark'}`;
+        return `<li class="page-item ${disabled ? 'disabled' : ''} ${active ? 'active' : ''}">
+            <button type="button" class="${linkClass}" ${page && !disabled && !active ? `data-page="${page}"` : ''} ${disabled ? 'disabled' : ''} ${active ? 'aria-current="page"' : ''} ${ariaLabel ? `aria-label="${ariaLabel}"` : ''}>${label}</button>
+        </li>`;
+    };
+
+    const start = Math.max(1, current - 2);
+    const end = Math.min(last, current + 2);
+    let html = item('&laquo;', current - 1, { disabled: current === 1, ariaLabel: 'Previous page' });
+    if (start > 1) html += item('1', 1);
+    if (start > 2) html += item('...', null, { disabled: true });
+    for (let page = start; page <= end; page++) html += item(String(page), page, { active: page === current });
+    if (end < last - 1) html += item('...', null, { disabled: true });
+    if (end < last) html += item(last.toLocaleString(), last);
+    html += item('&raquo;', current + 1, { disabled: current === last, ariaLabel: 'Next page' });
+    controls.innerHTML = html;
+}
+
+function logQuery() {
+    const { start, end, status } = state.logFilters;
+    return { panel_id: state.panelId, start_date: start, end_date: end, status };
+}
+
+function hasLogFilters() {
+    const { start, end, status } = state.logFilters;
+    return Boolean(start || end || status);
+}
+
+async function loadLogs({ animate = true, background = false, announce = false } = {}) {
+    const panelId = state.panelId;
+    const query = JSON.stringify(logQuery());
+    if (!background) renderLogMessage('Loading readings');
+    try {
+        const { data, meta } = await apiGet('logs', { ...logQuery(), per_page: LOGS_PER_PAGE, page: state.logPage });
+        if (panelId !== state.panelId || query !== JSON.stringify(logQuery())) return;
+
+        // Rows can disappear (wiped or filtered), so step back to the last page that still exists.
+        if (data.length === 0 && meta.total > 0 && state.logPage > meta.last_page) {
+            state.logPage = meta.last_page;
+            await loadLogs({ animate, background });
+            return;
+        }
+
+        state.logPage = meta.current_page;
+        if (data.length === 0) {
+            state.logRows = [];
+            renderLogMessage(hasLogFilters() ? 'No readings match this filter.' : 'No readings yet. They appear here once the device reports in.');
+        } else {
+            renderLogRows(data, animate);
+        }
+        renderPagination(meta);
+        setText('log-updated', `Updated ${new Date().toLocaleTimeString('en-GB')}, refreshes every ${LOG_REFRESH_MS / 1000} s`);
+        if (announce) showToast('success', `Found ${meta.total.toLocaleString()} records.`);
+    } catch (error) {
+        if (panelId !== state.panelId) return;
+        if (background && state.logRows.length) {
+            setText('log-updated', 'Could not refresh. Showing the last loaded readings.');
+        } else {
+            state.logRows = [];
+            renderLogMessage('Could not load readings.', true);
+            setText('log-updated', 'Could not refresh');
+            renderPagination({ total: 0 });
+        }
+        console.error('Could not load logs:', error);
+    }
+}
+
+function applyLogFilter() {
+    const start = byId('filter-date-start').value;
+    const end = byId('filter-date-end').value;
+    if (start && end && start > end) {
+        showToast('error', 'The start date must be on or before the end date.');
+        return;
+    }
+    const status = byId('filter-status').value;
+    state.logFilters = { start, end, status: status === 'All' ? '' : status };
+    state.logPage = 1;
+    loadLogs({ announce: true });
+}
+
+function clearLogFilter() {
+    state.pickers.start?.clear();
+    state.pickers.end?.clear();
+    byId('filter-date-start').value = '';
+    byId('filter-date-end').value = '';
+    if (state.selects.status) state.selects.status.setValue('All', true);
+    else byId('filter-status').value = 'All';
+    state.logFilters = { start: '', end: '', status: '' };
+    state.logPage = 1;
+    loadLogs();
+}
+
+function showLogDetail(log) {
+    const dual = log.panel_id === 'panel1';
+    const facts = [
+        ['Time (WITA)', formatDateTime(log.created_at)],
+        ['Array', PANELS[log.panel_id]?.name || log.panel_id],
+        ['Status', log.status],
+        ['Mode', log.tracking_mode],
+        ['Weather', log.weather_status || 'Unknown'],
+        ['Voltage', `${formatNumber(log.voltage, 2)} V`],
+        ['Current', `${formatNumber(log.current, 2)} A`],
+        ['Power', `${formatNumber(log.power_output, 1)} W`],
+        [dual ? 'Azimuth' : 'Target angle', `${formatNumber(log.azimuth)}°`],
+        [dual ? 'Elevation' : 'Current angle', `${formatNumber(log.elevation)}°`],
+    ];
+    if (dual) {
+        facts.push(
+            ['LDR North', formatNumber(log.ldr_nw, 0)],
+            ['LDR East', formatNumber(log.ldr_ne, 0)],
+            ['LDR West', formatNumber(log.ldr_sw, 0)],
+            ['LDR South', formatNumber(log.ldr_se, 0)],
+        );
+    }
+
+    setText('log-detail-title', `Log #${log.id}`);
+    byId('log-detail-body').innerHTML = facts
+        .map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd></div>`)
+        .join('');
+    bootstrap.Modal.getOrCreateInstance(byId('log-detail-modal')).show();
+}
+
+/* Export */
+
+function downloadCsv(filename, header, rows) {
+    const cell = (value) => {
+        const text = String(value ?? '');
+        return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const csv = [header, ...rows].map((row) => row.map(cell).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+async function runExport(button, task) {
+    button.disabled = true;
+    try {
+        await task();
+    } catch (error) {
+        showToast('error', `Export failed: ${error.message}`);
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function exportLogs() {
+    const panelId = state.panelId;
+    const { data } = await apiGet('logs', logQuery());
+    if (!data.length) {
         showToast('error', 'No data available to export.');
         return;
     }
-    
-    let isPanel1 = window.currentPanelId === 'panel1';
-    let csvContent = 'data:text/csv;charset=utf-8,';
-    
-    if (isPanel1) {
-        csvContent += 'Timestamp,Azimuth,Elevation,Voltage,Current,LDR NW,LDR NE,LDR SW,LDR SE,Mode,Command\n';
-    } else {
-        csvContent += 'Timestamp,Azimuth,Elevation,Voltage,Current,Mode,Command\n';
+    const dual = panelId === 'panel1';
+    const header = ['Timestamp (WITA)', 'Azimuth', 'Elevation', 'Voltage (V)', 'Current (A)', 'Power (W)',
+        ...(dual ? ['LDR North', 'LDR East', 'LDR West', 'LDR South'] : []), 'Mode', 'Status', 'Weather'];
+    const rows = data.map((row) => [
+        formatDateTime(row.created_at), row.azimuth, row.elevation, row.voltage, row.current, row.power_output,
+        ...(dual ? [row.ldr_nw, row.ldr_ne, row.ldr_sw, row.ldr_se] : []), row.tracking_mode, row.status, row.weather_status,
+    ]);
+    downloadCsv(`solaris_${panelId}_logs_${Date.now()}.csv`, header, rows);
+    showToast('success', `Exported ${data.length.toLocaleString()} records.`);
+}
+
+async function exportAnalytics() {
+    const { data } = await apiGet('series', { panel_id: state.panelId, range: state.range });
+    if (!data.length) {
+        showToast('error', 'No data available to export.');
+        return;
     }
-    
-    window.logDataCache.forEach(row => {
-        let ts = row.created_at ? new Date(row.created_at).toLocaleString('en-US', { timeZone: 'Asia/Makassar' }).replace(',', '') : 'N/A';
-        let rowStr = '';
-        if (isPanel1) {
-            rowStr = `${ts},${row.azimuth},${row.elevation},${row.voltage},${row.current},${row.ldr_nw || 0},${row.ldr_ne || 0},${row.ldr_sw || 0},${row.ldr_se || 0},${row.tracking_mode || 'Auto'},${row.manual_command || 'None'}`;
-        } else {
-            rowStr = `${ts},${row.azimuth},${row.elevation},${row.voltage},${row.current},${row.tracking_mode || 'Auto'},${row.manual_command || 'None'}`;
-        }
-        csvContent += rowStr + '\n';
-    });
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `solaris_data_${type}_${new Date().getTime()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
+    const header = ['Period start (WITA)', 'Avg voltage (V)', 'Avg current (A)', 'Avg power (W)', 'Peak power (W)', 'Estimated energy (Wh)', 'Readings'];
+    const rows = data.map((row) => [formatDateTime(row.t), row.voltage, row.current, row.power, row.peak_power, row.energy_wh, row.samples]);
+    downloadCsv(`solaris_${state.panelId}_${state.range}_${Date.now()}.csv`, header, rows);
     showToast('success', 'Data exported successfully!');
 }
 
-async function filterLogs() {
-    await populateLogs();
-    if(!window.logDataCache) return;
-    
-    const statusFilter = document.getElementById('filter-status').value;
-    
-    let filtered = window.logDataCache.filter(log => {
-        let status = 'Unknown';
-        if (log.panel_id === 'panel1') {
-            let avgLdr = (log.ldr_nw + log.ldr_ne + log.ldr_sw + log.ldr_se) / 4;
-            let maxDiff = Math.max(Math.abs(log.ldr_nw - log.ldr_ne), Math.abs(log.ldr_sw - log.ldr_se), Math.abs(log.ldr_nw - log.ldr_sw), Math.abs(log.ldr_ne - log.ldr_se));
-            let diffMargin = avgLdr > 0 ? (maxDiff / avgLdr) * 100 : 0;
-            if (log.tracking_mode === 'Manual') status = 'Manual Override';
-            else if (diffMargin <= 15) status = 'Sun Locked';
-            else status = 'Tracking...';
-        } else {
-            let diff = Math.abs(log.azimuth - log.elevation);
-            if (log.tracking_mode === 'Manual') status = 'Manual Override';
-            else if (diff <= 2) status = 'Sun Locked';
-            else status = 'Tracking...';
-        }
-        
-        let matchStatus = true;
-        if(statusFilter !== 'All' && statusFilter !== 'All Statuses') {
-            matchStatus = (status === statusFilter);
-        }
-        
-        return matchStatus;
-    });
-    
-    renderLogs(filtered);
-    showToast('success', `Found ${filtered.length} records.`);
+async function exportWeather() {
+    const { data } = await apiGet('weather', { range: state.range });
+    if (!data.length) {
+        showToast('error', 'No weather recorded in this period.');
+        return;
+    }
+    const header = ['Observed (WITA)', 'Condition', 'Temperature (C)', 'Humidity (%)', 'Cloud cover (%)', 'Precipitation (mm)', 'Wind (km/h)', 'Solar radiation (W/m2)', 'WMO code'];
+    const rows = data.map((row) => [formatDateTime(row.observed_at), row.description, row.temperature, row.humidity, row.cloud_cover, row.precipitation, row.wind_speed, row.solar_radiation, row.weather_code]);
+    downloadCsv(`solaris_weather_${state.range}_${Date.now()}.csv`, header, rows);
+    showToast('success', `Exported ${data.length.toLocaleString()} weather records.`);
 }
 
-function seedDatabase() {
-    const subsystem = document.getElementById('dev-tools-subsystem').value;
+/* Test data tools (only rendered when TRACKER_DEV_TOOLS is on) */
+
+function refreshAfterDataChange() {
+    state.logPage = 1;
+    fetchLatest();
+    refreshView(state.view);
+}
+
+async function seedDatabase() {
     showToast('info', 'Generating random historical records...');
-    fetch('/api/tracker/seed?panel_id=' + subsystem)
-        .then(res => {
-            if(!res.ok) throw new Error('Seed rejected: ' + res.status);
-            return res.json();
-        })
-        .then(data => {
-            showToast('success', data.message || 'Data generated successfully!');
-            populateLogs();
-        })
-        .catch(err => {
-            showToast('error', 'Failed to generate data.');
-        });
-}
-
-async function resetDatabase() {
-    const subsystem = document.getElementById('dev-tools-subsystem').value;
-    if(!confirm("Are you sure you want to completely wipe the database for " + subsystem + "? This cannot be undone!")) return;
-    
     try {
-        const response = await fetch('/api/tracker/reset', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ panel_id: subsystem })
-        });
-        const json = await response.json();
-        if(json.success) {
-            showToast('success', 'Database wiped successfully!');
-            populateLogs();
-            fetchApiData();
-        } else {
-            showToast('danger', 'Failed to wipe database.');
-        }
-    } catch(err) {
-        console.error(err);
-        showToast('danger', 'Error connecting to server.');
+        const json = await apiGet('seed', { panel_id: byId('dev-tools-subsystem').value });
+        showToast('success', json.message || 'Data generated successfully!');
+        refreshAfterDataChange();
+    } catch (error) {
+        showToast('error', `Failed to generate data: ${error.message}`);
     }
 }
 
-// --- WEATHER WIDGET LOGIC ---
-function initWeatherWidget() {
-    // Koordinat permanen lokasi ESP32 / Solar Tracker
-    const lat = -5.2150509;
-    const lon = 119.5793433;
-    getWeatherFromMeteo(lat, lon);
+async function resetDatabase() {
+    const select = byId('dev-tools-subsystem');
+    const label = select.options[select.selectedIndex].text;
+    if (!confirm(`Are you sure you want to completely wipe the logs for: ${label}? This cannot be undone!`)) return;
+    try {
+        await apiPost('reset', { panel_id: select.value });
+        showToast('success', 'Database wiped successfully!');
+        refreshAfterDataChange();
+    } catch (error) {
+        showToast('error', `Failed to wipe database: ${error.message}`);
+    }
 }
 
-function getWeatherFromMeteo(lat, lon) {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`;
-    
-    fetch(url)
-        .then(res => res.json())
-        .then(data => {
-            if(!data || !data.current) return;
-            const current = data.current;
-            const temp = current.temperature_2m;
-            const code = current.weather_code;
-            
-            let desc = 'Clear Sky';
-            let icon = 'light_mode';
-            
-            if(code >= 1 && code <= 3) { desc = 'Partly Cloudy'; icon = 'partly_cloudy_day'; }
-            else if(code >= 45 && code <= 48) { desc = 'Foggy'; icon = 'foggy'; }
-            else if(code >= 51 && code <= 67) { desc = 'Rain'; icon = 'rainy'; }
-            else if(code >= 80 && code <= 82) { desc = 'Showers'; icon = 'rainy'; }
-            else if(code >= 95) { desc = 'Thunderstorm'; icon = 'thunderstorm'; }
-            
-            const wDesc = document.getElementById('weather-desc');
-            const wIcon = document.getElementById('weather-icon');
-            
-            if(wDesc) {
-                wDesc.innerHTML = `${desc} <span id="weather-temp" class="fs-5 text-muted ms-1">${temp}°C</span>`;
-            }
-            if(wIcon) {
-                wIcon.innerText = icon;
-                if(icon === 'rainy' || icon === 'thunderstorm') {
-                    wIcon.classList.remove('text-warning');
-                    wIcon.classList.add('text-info');
-                } else {
-                    wIcon.classList.remove('text-info');
-                    wIcon.classList.add('text-warning');
-                }
-            }
-        })
-        .catch(err => console.error('Weather API Error:', err));
+/* Theme */
+
+function activeTheme(theme) {
+    if (theme !== 'auto') return theme;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    initWeatherWidget();
-    // Refresh weather every 30 minutes
-    setInterval(initWeatherWidget, 30 * 60 * 1000);
-});
+function applyTheme(theme) {
+    const active = activeTheme(theme);
+    document.documentElement.setAttribute('data-bs-theme', active);
+    setText('theme-toggle-icon', active === 'dark' ? 'light_mode' : 'dark_mode');
+    applyChartTheme();
+}
+
+function setTheme(theme) {
+    localStorage.setItem('theme', theme);
+    byId('theme-select').value = theme;
+    applyTheme(theme);
+}
+
+/* Wiring */
+
+function bindEvents() {
+    document.addEventListener('click', (event) => {
+        const view = event.target.closest('.nav-link[data-view]');
+        if (view) {
+            event.preventDefault();
+            navigateTo(view.dataset.view);
+            return;
+        }
+        const panel = event.target.closest('[data-panel]');
+        if (panel) {
+            switchPanel(panel.dataset.panel);
+            return;
+        }
+        const command = event.target.closest('[data-command]');
+        if (command) {
+            sendManualCommand(command.dataset.command);
+            return;
+        }
+        const page = event.target.closest('[data-page]');
+        if (page) {
+            state.logPage = Number(page.dataset.page);
+            loadLogs();
+            return;
+        }
+        const detail = event.target.closest('[data-log-index]');
+        if (detail) showLogDetail(state.logRows[Number(detail.dataset.logIndex)]);
+    });
+
+    byId('btn-mode-auto').addEventListener('click', () => setTrackerMode('Automatic'));
+    byId('btn-mode-stop').addEventListener('click', () => setTrackerMode('Stop'));
+    byId('btn-mode-reset').addEventListener('click', () => sendManualCommand('Reset'));
+    byId('btn-trk-auto').addEventListener('click', () => setTrackerMode('Automatic'));
+    byId('btn-trk-manual').addEventListener('click', () => setTrackerMode('Manual'));
+
+    const positionCard = byId('dash-position-card');
+    positionCard.addEventListener('click', () => navigateTo('tracker'));
+    positionCard.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            navigateTo('tracker');
+        }
+    });
+
+    byId('notice-btn').addEventListener('click', showSystemNotice);
+
+    byId('log-filter-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        applyLogFilter();
+    });
+    byId('filter-clear').addEventListener('click', clearLogFilter);
+    byId('filter-subsystem').addEventListener('change', (event) => {
+        if (event.target.value !== state.panelId) switchPanel(event.target.value);
+    });
+
+    byId('export-logs').addEventListener('click', (event) => runExport(event.currentTarget, exportLogs));
+    byId('export-analytics').addEventListener('click', (event) => runExport(event.currentTarget, exportAnalytics));
+    byId('export-weather').addEventListener('click', (event) => runExport(event.currentTarget, exportWeather));
+
+    byId('analytics-range').addEventListener('change', (event) => {
+        state.range = event.target.value;
+        loadAnalyticsSeries();
+        loadWeatherHistory();
+    });
+
+    byId('theme-toggle').addEventListener('click', () => {
+        const stored = localStorage.getItem('theme') || 'light';
+        setTheme(activeTheme(stored) === 'dark' ? 'light' : 'dark');
+    });
+    byId('theme-select').addEventListener('change', (event) => setTheme(event.target.value));
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (localStorage.getItem('theme') === 'auto') applyTheme('auto');
+    });
+
+    byId('poll-select').addEventListener('change', (event) => {
+        state.pollMs = Number(event.target.value);
+        localStorage.setItem('pollMs', state.pollMs);
+        restartPolling();
+        showToast('success', 'Polling interval updated');
+    });
+
+    byId('seed-data')?.addEventListener('click', seedDatabase);
+    byId('wipe-data')?.addEventListener('click', resetDatabase);
+
+    window.addEventListener('hashchange', () => navigateTo(location.hash.slice(1), { updateHash: false }));
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            fetchLatest();
+            refreshView(state.view);
+        }
+    });
+}
+
+function initFilters() {
+    if (typeof flatpickr !== 'undefined') {
+        state.pickers.start = flatpickr('#filter-date-start', { dateFormat: 'Y-m-d' });
+        state.pickers.end = flatpickr('#filter-date-end', { dateFormat: 'Y-m-d' });
+    }
+    if (typeof TomSelect !== 'undefined') {
+        state.selects.status = new TomSelect('#filter-status', { create: false, controlInput: null });
+        state.selects.subsystem = new TomSelect('#filter-subsystem', { create: false, controlInput: null });
+    }
+    if (state.selects.subsystem) state.selects.subsystem.setValue(state.panelId, true);
+    else byId('filter-subsystem').value = state.panelId;
+}
+
+function init() {
+    initCharts();
+    initFilters();
+    bindEvents();
+
+    const theme = localStorage.getItem('theme') || 'light';
+    byId('theme-select').value = theme;
+    applyTheme(theme);
+
+    const pollOption = byId('poll-select').querySelector(`option[value="${state.pollMs}"]`);
+    if (pollOption) pollOption.selected = true;
+    else state.pollMs = 2000;
+
+    navigateTo(location.hash.slice(1) || 'dashboard', { updateHash: false });
+    switchPanel(state.panelId, { silent: true });
+
+    restartPolling();
+    loadWeather();
+    setInterval(loadWeather, WEATHER_REFRESH_MS);
+    setInterval(() => {
+        if (document.hidden) return;
+        if (state.view === 'dashboard') loadDashboardSeries();
+        if (state.view === 'charts') {
+            loadAnalyticsSeries();
+            loadWeatherHistory();
+        }
+    }, SERIES_REFRESH_MS);
+    setInterval(() => {
+        if (!document.hidden && state.view === 'logs') loadLogs({ animate: false, background: true });
+    }, LOG_REFRESH_MS);
+}
+
+window.addEventListener('DOMContentLoaded', init);
