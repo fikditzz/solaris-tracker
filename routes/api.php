@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TrackerLogController;
+use App\Http\Middleware\EnsureDevToolsEnabled;
 
 
 
@@ -16,7 +17,7 @@ Route::get('/tracker/latest', [TrackerLogController::class, 'latest']);
 Route::post('/tracker/mode', [TrackerLogController::class, 'setMode']);
 Route::get('/tracker/logs', [TrackerLogController::class, 'logs']);
 Route::post('/tracker/command', [TrackerLogController::class, 'sendCommand']);
-Route::post('/tracker/reset', [TrackerLogController::class, 'resetData']);
+Route::post('/tracker/reset', [TrackerLogController::class, 'resetData'])->middleware(EnsureDevToolsEnabled::class);
 
 Route::get('/tracker/seed', function (Request $request) {
     $panelId = $request->query('panel_id', 'panel1');
@@ -40,4 +41,4 @@ Route::get('/tracker/seed', function (Request $request) {
         }
     }
     return response()->json(['message' => 'Random records seeded successfully for ' . $panelId]);
-});
+})->middleware(EnsureDevToolsEnabled::class);

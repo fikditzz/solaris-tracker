@@ -16,3 +16,5 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/solaris-project.zip
+/esp32/**/secrets.h

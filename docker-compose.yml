@@ -22,7 +22,7 @@ services:
       - "3306:3306"
     environment:
       MYSQL_DATABASE: solaris_db
-      MYSQL_ROOT_PASSWORD: password_rahasia_anda
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Isi DB_PASSWORD di file .env}
     volumes:
       - db_data:/var/lib/mysql
 

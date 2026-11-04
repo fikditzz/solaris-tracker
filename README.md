@@ -53,6 +53,8 @@ Jika Anda ingin menjalankan proyek ini di laptop lokal (*localhost*):
    cp .env.example .env
    php artisan key:generate
    ```
+   Isi juga `MQTT_*` jika menjalankan `mqtt_bridge.py`, dan set `TRACKER_DEV_TOOLS=true` hanya di lokal untuk mengaktifkan tombol seed dan reset.
+   Untuk ESP32, salin `esp32/helios_tracker_esp32/secrets.h.example` menjadi `secrets.h` lalu isi data WiFi.
 4. **Migrasi Database:**
    ```bash
    php artisan migrate

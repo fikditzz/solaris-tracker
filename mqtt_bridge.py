@@ -1,11 +1,29 @@
 import paho.mqtt.client as mqtt
-import json, urllib.request, ssl
+import json, os, sys, urllib.request, ssl
+from pathlib import Path
+
+def load_env_file(path):
+    """Muat KEY=VALUE dari .env; variabel environment yang sudah ada tidak ditimpa."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+load_env_file(Path(__file__).resolve().parent / ".env")
+
+missing = [k for k in ("MQTT_BROKER", "MQTT_USER", "MQTT_PASS") if not os.environ.get(k)]
+if missing:
+    sys.exit(f"Konfigurasi belum lengkap, isi di .env: {', '.join(missing)}")
 
 # Konfigurasi HiveMQ
-MQTT_BROKER = "d8aeaf4204e04ca49ee792d7dec5be25.s1.eu.hivemq.cloud"
-MQTT_PORT = 8883
-MQTT_USER = "BengkelIT"
-MQTT_PASS = "BengkelIT@26"
+MQTT_BROKER = os.environ["MQTT_BROKER"]
+MQTT_PORT = int(os.environ.get("MQTT_PORT") or 8883)
+MQTT_USER = os.environ["MQTT_USER"]
+MQTT_PASS = os.environ["MQTT_PASS"]
 TOPIC_1AXIS = "solartracker/1axis/data"
 TOPIC_2AXIS = "solartracker/2axis/data"
 

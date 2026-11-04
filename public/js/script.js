@@ -686,7 +686,10 @@ function seedDatabase() {
     const subsystem = document.getElementById('dev-tools-subsystem').value;
     showToast('info', 'Generating random historical records...');
     fetch('/api/tracker/seed?panel_id=' + subsystem)
-        .then(res => res.json())
+        .then(res => {
+            if(!res.ok) throw new Error('Seed rejected: ' + res.status);
+            return res.json();
+        })
         .then(data => {
             showToast('success', data.message || 'Data generated successfully!');
             populateLogs();
