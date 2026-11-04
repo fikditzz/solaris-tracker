@@ -246,8 +246,8 @@
                                 <div id="dash-azimuth-map-col" class="col-6 h-100 d-flex flex-column align-items-center justify-content-center position-relative border-end border-light transition-all">
                                     <div class="text-primary mb-2 position-absolute top-0 mt-2" style="font-size: 10px; font-weight: 700; letter-spacing: 1px;">AZIMUTH (TOP)</div>
                                     <div style="width: 140px; height: 140px; border-radius: 50%; border: 2px dashed rgba(100, 116, 139, 0.45); position: relative; display: flex; align-items: center; justify-content: center;">
-                                        <div class="compass-mark" style="top: -20px;">N</div>
-                                        <div class="compass-mark" style="bottom: -20px;">S</div>
+                                        <div class="compass-mark" style="top: 2px;">N</div>
+                                        <div class="compass-mark" style="bottom: 2px;">S</div>
                                         <div class="compass-mark" style="left: 4px;">W</div>
                                         <div class="compass-mark" style="right: 4px;">E</div>
 
@@ -366,8 +366,8 @@
                                   <div id="azimuth-map-col" class="col-6 h-100 d-flex flex-column align-items-center justify-content-center position-relative border-end border-light transition-all">
                                      <div class="text-primary mb-2 position-absolute top-0 mt-2" style="font-size: 10px; font-weight: 700; letter-spacing: 1px;">AZIMUTH (TOP)</div>
                                      <div style="width: 140px; height: 140px; border-radius: 50%; border: 2px dashed rgba(100, 116, 139, 0.45); position: relative; display: flex; align-items: center; justify-content: center;">
-                                         <div class="compass-mark" style="top: -20px;">N</div>
-                                         <div class="compass-mark" style="bottom: -20px;">S</div>
+                                         <div class="compass-mark" style="top: 2px;">N</div>
+                                         <div class="compass-mark" style="bottom: 2px;">S</div>
                                          <div class="compass-mark" style="left: 4px;">W</div>
                                          <div class="compass-mark" style="right: 4px;">E</div>
 
@@ -593,7 +593,7 @@
                                     <div class="border-start"></div>
                                     <div class="d-flex align-items-center gap-2"><span class="legend-dot legend-radiation"></span> Solar Radiation</div>
                                 </div>
-                                <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-2" id="export-weather"><span class="material-symbols-rounded fs-5" aria-hidden="true">download</span> CSV</button>
+                                <button type="button" class="btn btn-outline-secondary d-flex align-items-center gap-2" id="export-weather"><span class="material-symbols-rounded fs-5" aria-hidden="true">download</span> Excel</button>
                             </div>
                         </div>
                         <div class="card-body-custom px-4 pb-4 mt-2">
@@ -640,7 +640,7 @@
                          <div class="col-lg-3 d-flex flex-wrap justify-content-end gap-2">
                               <button type="submit" class="btn btn-outline-secondary d-flex align-items-center gap-1"><span class="material-symbols-rounded fs-5" aria-hidden="true">filter_list</span> Apply</button>
                               <button type="button" class="btn btn-outline-secondary" id="filter-clear">Clear</button>
-                              <button type="button" class="btn btn-dark d-flex align-items-center gap-1" id="export-logs"><span class="material-symbols-rounded fs-5" aria-hidden="true">file_download</span> CSV</button>
+                              <button type="button" class="btn btn-dark d-flex align-items-center gap-1" id="export-logs"><span class="material-symbols-rounded fs-5" aria-hidden="true">file_download</span> Excel</button>
                          </div>
                      </div>
                  </div>

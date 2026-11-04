@@ -823,20 +823,48 @@ function showLogDetail(log) {
 
 /* Export */
 
-function downloadCsv(filename, header, rows) {
-    const cell = (value) => {
-        const text = String(value ?? '');
-        return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-    };
-    const csv = [header, ...rows].map((row) => row.map(cell).join(',')).join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+// A real .xlsx keeps columns and decimals intact in every Excel language, unlike CSV,
+// which Indonesian Excel reads as a single column. Loaded on demand because it is large.
+const XLSX_LIBRARY_URL = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+let xlsxLibrary = null;
+
+function loadXlsxLibrary() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    if (!xlsxLibrary) {
+        xlsxLibrary = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = XLSX_LIBRARY_URL;
+            script.onload = () => resolve(window.XLSX);
+            script.onerror = () => {
+                xlsxLibrary = null;
+                script.remove();
+                reject(new Error('could not load the Excel library'));
+            };
+            document.head.appendChild(script);
+        });
+    }
+    return xlsxLibrary;
+}
+
+// Excel stores dates as days since 1899-12-30. Built by hand so the cell shows WITA
+// on every computer, whatever timezone it is set to.
+function excelDate(iso) {
+    const witaMs = new Date(iso).getTime() + 8 * 60 * 60 * 1000;
+    return { t: 'n', v: witaMs / 86400000 + 25569, z: 'yyyy-mm-dd hh:mm:ss' };
+}
+
+function buildWorkbook(XLSX, sheetName, header, rows) {
+    const sheet = XLSX.utils.aoa_to_sheet([header, ...rows]);
+    sheet['!cols'] = header.map((title, index) => ({ wch: Math.max(title.length + 2, index === 0 ? 20 : 10) }));
+    sheet['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rows.length, c: header.length - 1 } }) };
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, sheetName);
+    return workbook;
+}
+
+async function downloadWorkbook(filename, sheetName, header, rows) {
+    const XLSX = await loadXlsxLibrary();
+    XLSX.writeFile(buildWorkbook(XLSX, sheetName, header, rows), filename);
 }
 
 async function runExport(button, task) {
@@ -861,10 +889,10 @@ async function exportLogs() {
     const header = ['Timestamp (WITA)', 'Azimuth', 'Elevation', 'Voltage (V)', 'Current (A)', 'Power (W)',
         ...(dual ? ['LDR North', 'LDR East', 'LDR West', 'LDR South'] : []), 'Mode', 'Status', 'Weather'];
     const rows = data.map((row) => [
-        formatDateTime(row.created_at), row.azimuth, row.elevation, row.voltage, row.current, row.power_output,
+        excelDate(row.created_at), row.azimuth, row.elevation, row.voltage, row.current, row.power_output,
         ...(dual ? [row.ldr_nw, row.ldr_ne, row.ldr_sw, row.ldr_se] : []), row.tracking_mode, row.status, row.weather_status,
     ]);
-    downloadCsv(`solaris_${panelId}_logs_${Date.now()}.csv`, header, rows);
+    await downloadWorkbook(`solaris_${panelId}_logs_${Date.now()}.xlsx`, 'Logs', header, rows);
     showToast('success', `Exported ${data.length.toLocaleString()} records.`);
 }
 
@@ -875,8 +903,8 @@ async function exportAnalytics() {
         return;
     }
     const header = ['Period start (WITA)', 'Avg voltage (V)', 'Avg current (A)', 'Avg power (W)', 'Peak power (W)', 'Estimated energy (Wh)', 'Readings'];
-    const rows = data.map((row) => [formatDateTime(row.t), row.voltage, row.current, row.power, row.peak_power, row.energy_wh, row.samples]);
-    downloadCsv(`solaris_${state.panelId}_${state.range}_${Date.now()}.csv`, header, rows);
+    const rows = data.map((row) => [excelDate(row.t), row.voltage, row.current, row.power, row.peak_power, row.energy_wh, row.samples]);
+    await downloadWorkbook(`solaris_${state.panelId}_${state.range}_${Date.now()}.xlsx`, 'Analytics', header, rows);
     showToast('success', 'Data exported successfully!');
 }
 
@@ -887,8 +915,8 @@ async function exportWeather() {
         return;
     }
     const header = ['Observed (WITA)', 'Condition', 'Temperature (C)', 'Humidity (%)', 'Cloud cover (%)', 'Precipitation (mm)', 'Wind (km/h)', 'Solar radiation (W/m2)', 'WMO code'];
-    const rows = data.map((row) => [formatDateTime(row.observed_at), row.description, row.temperature, row.humidity, row.cloud_cover, row.precipitation, row.wind_speed, row.solar_radiation, row.weather_code]);
-    downloadCsv(`solaris_weather_${state.range}_${Date.now()}.csv`, header, rows);
+    const rows = data.map((row) => [excelDate(row.observed_at), row.description, row.temperature, row.humidity, row.cloud_cover, row.precipitation, row.wind_speed, row.solar_radiation, row.weather_code]);
+    await downloadWorkbook(`solaris_weather_${state.range}_${Date.now()}.xlsx`, 'Weather', header, rows);
     showToast('success', `Exported ${data.length.toLocaleString()} weather records.`);
 }
 
