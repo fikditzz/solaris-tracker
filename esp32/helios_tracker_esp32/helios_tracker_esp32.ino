@@ -1,13 +1,12 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "secrets.h" // Salin dari secrets.h.example; WIFI_SSID & WIFI_PASSWORD ada di sana
 
 // ============================================
 //   KONFIGURASI - Ubah sesuai kebutuhan Anda
 // ============================================
-const char* WIFI_SSID      = "LAPTOP-T5OF2UUV";
-const char* WIFI_PASSWORD  = "aso12345678";
-const char* API_URL        = "http://solaris.bengkelit.id/api/tracker/log";
+const char* API_URL       = "http://solaris.bengkelit.id/api/tracker/log";
 
 const unsigned long SEND_INTERVAL = 3000; // Kirim data setiap 3 detik
 
