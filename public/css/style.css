@@ -433,6 +433,46 @@ body, .card-custom, .bg-light, .bg-white, .text-dark, .text-muted {
 .manual-now { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; }
 .manual-note { color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 0.75rem 0 0; }
 
+.panel-menu {
+    min-width: 240px;
+    --panel-selected-bg: var(--primary-light);
+    --panel-selected-border: var(--primary);
+    --panel-selected-text: #854D0E;
+    --bs-dropdown-bg: var(--surface);
+    --bs-dropdown-border-color: var(--border-color);
+    --bs-dropdown-border-radius: var(--radius-md);
+    --bs-dropdown-link-hover-bg: var(--bg-color);
+    --bs-dropdown-link-hover-color: var(--text-main);
+    --bs-dropdown-link-active-bg: var(--panel-selected-bg);
+    --bs-dropdown-link-active-color: var(--text-main);
+}
+[data-bs-theme="dark"] .panel-menu {
+    --panel-selected-bg: #3F3410;
+    --panel-selected-border: #6B5A12;
+    --panel-selected-text: #FDE047;
+}
+.panel-option {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid transparent; border-radius: 8px;
+    white-space: normal;
+}
+.panel-option-icon {
+    flex: none; display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px;
+    background: var(--bg-color); color: var(--text-muted);
+    border: 1px solid var(--border-color); border-radius: 8px;
+    font-size: 18px;
+}
+.panel-option-text { flex: 1; min-width: 0; text-align: start; }
+.panel-option-name { display: block; font-weight: 600; font-size: 0.9rem; color: var(--text-main); }
+.panel-option-axis { display: block; font-size: 0.75rem; color: var(--text-muted); }
+.panel-option-check { flex: none; font-size: 18px; color: var(--panel-selected-text); visibility: hidden; }
+.panel-option.active { background: var(--panel-selected-bg); border-color: var(--panel-selected-border); }
+.panel-option.active .panel-option-icon { background: var(--surface); border-color: var(--panel-selected-border); color: var(--panel-selected-text); }
+.panel-option.active .panel-option-axis { color: var(--panel-selected-text); }
+.panel-option.active .panel-option-check { visibility: visible; }
+
 .log-detail-btn {
     display: inline-flex; align-items: center; gap: 0.3rem;
     padding: 0.25rem 0.6rem;

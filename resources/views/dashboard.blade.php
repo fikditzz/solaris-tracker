@@ -71,30 +71,28 @@
               <div class="header-actions">
                   <div class="dropdown">
                       <button class="btn dropdown-toggle fw-semibold d-flex align-items-center gap-2" type="button" id="panelDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: var(--radius-md); padding: 0.5rem 1.25rem; background-color: var(--surface); color: var(--text-main); border: 1px solid var(--border-color); font-size: 0.95rem; min-width: 260px;">
-                          <span class="material-symbols-rounded text-primary" style="font-size: 20px;" aria-hidden="true">solar_power</span>
+                          <span class="material-symbols-rounded text-warning" style="font-size: 20px;" aria-hidden="true">solar_power</span>
                           <span><span id="panelDropdownText">Array Alpha</span><span class="d-none d-sm-inline" id="panelDropdownAxis"> (Dual Axis)</span></span>
                       </button>
-                      <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2 p-2 w-100" aria-labelledby="panelDropdownBtn" style="border-radius: var(--radius-md); border: 1px solid var(--border-color) !important;">
+                      <ul class="dropdown-menu dropdown-menu-end panel-menu shadow-sm mt-2 p-2 w-100" aria-labelledby="panelDropdownBtn">
                           <li>
-                              <button type="button" class="dropdown-item rounded py-2 mb-1 fw-semibold d-flex align-items-center gap-3" data-panel="panel1">
-                                  <div class="p-2 bg-primary bg-opacity-10 rounded d-flex align-items-center justify-content-center">
-                                      <span class="material-symbols-rounded text-primary" style="font-size: 18px;" aria-hidden="true">grid_view</span>
-                                  </div>
-                                  <div class="text-start">
-                                      <div class="text-dark">Array Alpha</div>
-                                      <div class="text-muted" style="font-size: 0.75rem;">Dual Axis Tracking</div>
-                                  </div>
+                              <button type="button" class="dropdown-item panel-option mb-1" data-panel="panel1">
+                                  <span class="panel-option-icon material-symbols-rounded" aria-hidden="true">grid_view</span>
+                                  <span class="panel-option-text">
+                                      <span class="panel-option-name">Array Alpha</span>
+                                      <span class="panel-option-axis">Dual Axis Tracking</span>
+                                  </span>
+                                  <span class="panel-option-check material-symbols-rounded" aria-hidden="true">check</span>
                               </button>
                           </li>
                           <li>
-                              <button type="button" class="dropdown-item rounded py-2 fw-semibold d-flex align-items-center gap-3" data-panel="panel2">
-                                  <div class="p-2 bg-success bg-opacity-10 rounded d-flex align-items-center justify-content-center">
-                                      <span class="material-symbols-rounded text-success" style="font-size: 18px;" aria-hidden="true">crop_square</span>
-                                  </div>
-                                  <div class="text-start">
-                                      <div class="text-dark">Array Beta</div>
-                                      <div class="text-muted" style="font-size: 0.75rem;">Single Axis Tracking</div>
-                                  </div>
+                              <button type="button" class="dropdown-item panel-option" data-panel="panel2">
+                                  <span class="panel-option-icon material-symbols-rounded" aria-hidden="true">crop_square</span>
+                                  <span class="panel-option-text">
+                                      <span class="panel-option-name">Array Beta</span>
+                                      <span class="panel-option-axis">Single Axis Tracking</span>
+                                  </span>
+                                  <span class="panel-option-check material-symbols-rounded" aria-hidden="true">check</span>
                               </button>
                           </li>
                       </ul>

@@ -175,7 +175,10 @@ function switchPanel(panelId, { silent = false } = {}) {
     byId('manual-target-form').reset();
 
     document.querySelectorAll('[data-panel]').forEach((el) => {
-        el.classList.toggle('active', el.dataset.panel === panelId);
+        const selected = el.dataset.panel === panelId;
+        el.classList.toggle('active', selected);
+        if (selected) el.setAttribute('aria-current', 'true');
+        else el.removeAttribute('aria-current');
     });
     document.querySelectorAll('.page-view.active').forEach((el) => {
         el.classList.remove('panel-switch-anim');
