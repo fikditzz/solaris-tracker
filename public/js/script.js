@@ -699,6 +699,10 @@ function renderLogMessage(message, withRetry = false) {
     body.appendChild(row);
 }
 
+function statusPill(status) {
+    return `<span class="status-pill ${STATUS_CLASSES[status] || 'is-none'}"><span style="display:inline-block; width:6px; height:6px; background:currentColor; border-radius:50%;"></span>${escapeHtml(status)}</span>`;
+}
+
 function renderLogRows(rows, animate) {
     state.logRows = rows;
     byId('log-table-body').innerHTML = rows.map((log, index) => {
@@ -711,8 +715,8 @@ function renderLogRows(rows, animate) {
                 <td class="${valueClass}">${formatNumber(log.current, 2)}</td>
                 <td>${formatNumber(log.power_output, 1)}</td>
                 <td class="text-nowrap">${escapeHtml(log.weather_status || 'Unknown')}</td>
-                <td><span class="status-pill ${STATUS_CLASSES[log.status] || 'is-none'}"><span style="display:inline-block; width:6px; height:6px; background:currentColor; border-radius:50%;"></span>${escapeHtml(log.status)}</span></td>
-                <td class="pe-4"><button type="button" class="btn btn-sm btn-light text-muted" data-log-index="${index}" aria-label="Show details for log ${escapeHtml(String(log.id))}"><span class="material-symbols-rounded" style="font-size:16px;" aria-hidden="true">more_horiz</span></button></td>
+                <td>${statusPill(log.status)}</td>
+                <td class="pe-4"><button type="button" class="log-detail-btn" data-log-index="${index}" aria-label="Show details for log ${escapeHtml(String(log.id))}"><span class="material-symbols-rounded" aria-hidden="true">visibility</span>Details</button></td>
             </tr>`;
     }).join('');
 }
@@ -825,31 +829,44 @@ function clearLogFilter() {
 
 function showLogDetail(log) {
     const dual = log.panel_id === 'panel1';
-    const facts = [
-        ['Time (WITA)', formatDateTime(log.created_at)],
-        ['Array', PANELS[log.panel_id]?.name || log.panel_id],
-        ['Status', log.status],
-        ['Mode', log.tracking_mode],
-        ['Weather', log.weather_status || 'Unknown'],
-        ['Voltage', `${formatNumber(log.voltage, 2)} V`],
-        ['Current', `${formatNumber(log.current, 2)} A`],
-        ['Power', `${formatNumber(log.power_output, 1)} W`],
-        [dual ? 'Azimuth' : 'Target angle', `${formatNumber(log.azimuth)}°`],
-        [dual ? 'Elevation' : 'Current angle', `${formatNumber(log.elevation)}°`],
+    const sections = [
+        ['Condition', [
+            ['Mode', log.tracking_mode],
+            ['Weather', log.weather_status || 'Unknown'],
+        ]],
+        ['Electrical', [
+            ['Voltage', `${formatNumber(log.voltage, 2)} V`],
+            ['Current', `${formatNumber(log.current, 2)} A`],
+            ['Power', `${formatNumber(log.power_output, 1)} W`],
+        ]],
+        ['Position', [
+            [dual ? 'Azimuth' : 'Target angle', `${formatNumber(log.azimuth)}°`],
+            [dual ? 'Elevation' : 'Current angle', `${formatNumber(log.elevation)}°`],
+        ]],
     ];
     if (dual) {
-        facts.push(
-            ['LDR North', formatNumber(log.ldr_nw, 0)],
-            ['LDR East', formatNumber(log.ldr_ne, 0)],
-            ['LDR West', formatNumber(log.ldr_sw, 0)],
-            ['LDR South', formatNumber(log.ldr_se, 0)],
-        );
+        sections.push(['Light sensors', [
+            ['North', formatNumber(log.ldr_nw, 0)],
+            ['East', formatNumber(log.ldr_ne, 0)],
+            ['West', formatNumber(log.ldr_sw, 0)],
+            ['South', formatNumber(log.ldr_se, 0)],
+        ]]);
     }
 
     setText('log-detail-title', `Log #${log.id}`);
-    byId('log-detail-body').innerHTML = facts
-        .map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd></div>`)
-        .join('');
+    byId('log-detail-body').innerHTML = `
+        <div class="detail-summary">
+            <div>
+                <div class="detail-summary-time">${escapeHtml(formatDateTime(log.created_at))} WITA</div>
+                <div class="detail-summary-array">${escapeHtml(PANELS[log.panel_id]?.name || log.panel_id)}</div>
+            </div>
+            ${statusPill(log.status)}
+        </div>
+        ${sections.map(([title, facts]) => `
+            <h3 class="detail-section-title">${escapeHtml(title)}</h3>
+            <dl class="detail-grid detail-grid-${facts.length}">
+                ${facts.map(([term, value]) => `<div><dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd></div>`).join('')}
+            </dl>`).join('')}`;
     bootstrap.Modal.getOrCreateInstance(byId('log-detail-modal')).show();
 }
 

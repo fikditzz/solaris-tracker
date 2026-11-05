@@ -760,7 +760,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <dl class="detail-list" id="log-detail-body"></dl>
+                    <div id="log-detail-body"></div>
                 </div>
             </div>
         </div>
