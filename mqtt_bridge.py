@@ -47,6 +47,9 @@ def on_message(client, userdata, msg):
         payload = json.loads(msg.payload.decode("utf-8"))
         api_data = {}
         
+        # Firmware 1 sumbu mengirim 'firmware_version', firmware 2 sumbu mengirim 'firmware'.
+        firmware = payload.get('firmware_version') or payload.get('firmware')
+
         v = float(payload.get('voltage', 0))
         i = float(payload.get('current', 0))
         p = float(payload.get('power', v * i))
@@ -63,7 +66,8 @@ def on_message(client, userdata, msg):
                 'ldr_ne': payload.get('lightE', 0),
                 'ldr_sw': payload.get('lightW', 0),
                 'ldr_se': payload.get('lightS', 0),
-                'tracking_mode': "Automatic" if payload.get('mode') == "AUTO" else "Manual"
+                'tracking_mode': "Automatic" if payload.get('mode') == "AUTO" else "Manual",
+                'firmware_version': firmware
             }
         elif msg.topic == TOPIC_1AXIS:
             api_data = {
@@ -73,7 +77,8 @@ def on_message(client, userdata, msg):
                 'voltage': v,
                 'current': i,
                 'power_output': p,
-                'tracking_mode': "Automatic" if payload.get('mode') == "AUTO" else "Manual"
+                'tracking_mode': "Automatic" if payload.get('mode') == "AUTO" else "Manual",
+                'firmware_version': firmware
             }
             
         post_to_laravel(api_data)

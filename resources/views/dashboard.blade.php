@@ -438,6 +438,14 @@
                                  <div id="algorithm-type" class="fw-semibold">LDR Sensors</div>
                                  <span class="material-symbols-rounded text-warning" aria-hidden="true">memory</span>
                              </div>
+                             <div class="text-xs text-muted mb-1">FIRMWARE</div>
+                             <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                                 <div>
+                                     <div class="fw-semibold" id="trk-firmware">--</div>
+                                     <div class="text-xs text-muted" id="trk-firmware-note"></div>
+                                 </div>
+                                 <span class="material-symbols-rounded text-warning" aria-hidden="true">system_update</span>
+                             </div>
                              <div class="text-xs text-muted mb-1">LAST READING (WITA)</div>
                              <div class="d-flex justify-content-between align-items-center">
                                  <div class="fw-semibold" id="trk-last-reading">No data yet</div>
@@ -716,6 +724,16 @@
                                 </select>
                             </div>
                             <div class="text-xs text-muted mt-3">Applied immediately and saved in this browser.</div>
+                        </div>
+                    </div>
+                    <div class="card-custom mb-4">
+                        <div class="card-header-custom pb-0 align-items-center justify-content-between">
+                            <h5 class="mb-0">Firmware</h5>
+                            <a class="text-xs fw-semibold" id="firmware-repo-link" href="https://github.com/bengkelit2026-ops/solar-tracker-firmware" target="_blank" rel="noopener noreferrer">GitHub repository</a>
+                        </div>
+                        <div class="card-body-custom">
+                            <div id="firmware-list" aria-live="polite"><div class="text-muted small">Loading firmware versions...</div></div>
+                            <div class="text-xs text-muted mt-3">Installed is the version each device last reported. Devices check the repository every minute and update themselves when the versions differ.</div>
                         </div>
                     </div>
                 </div>

@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
@@ -46,6 +47,7 @@ class TrackerLogController extends Controller
                 'motor2_load' => 'nullable|numeric',
                 'tracking_mode' => 'nullable|string',
                 'weather_status' => 'nullable|string',
+                'firmware_version' => 'nullable|string|max:32',
                 'created_at' => 'nullable|date',
             ]);
 
@@ -289,6 +291,70 @@ class TrackerLogController extends Controller
             'stale' => $latest === null
                 || $latest->observed_at->lt(now()->subMinutes(WeatherLog::STALE_AFTER_MINUTES)),
         ]);
+    }
+
+    /**
+     * Installed firmware per array (as last reported) next to the version published in the OTA repo.
+     */
+    public function firmware()
+    {
+        $data = [];
+        foreach (array_keys(config('tracker.firmware.version_urls')) as $panelId) {
+            $reported = TrackerLog::where('panel_id', $panelId)
+                ->whereNotNull('firmware_version')
+                ->latest()
+                ->first(['firmware_version', 'created_at']);
+
+            $installed = $reported?->firmware_version;
+            $latest = $this->latestFirmwareVersion($panelId);
+
+            $data[$panelId] = [
+                'installed' => $installed,
+                'latest' => $latest,
+                'state' => match (true) {
+                    $installed === null || $latest === null => 'unknown',
+                    $installed === $latest => 'up_to_date',
+                    default => 'update_available',
+                },
+                'last_seen' => $reported?->created_at,
+            ];
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+            'repo_url' => config('tracker.firmware.repo_url'),
+        ]);
+    }
+
+    /**
+     * Reads version.txt from the OTA repo. A miss is remembered for a minute so a
+     * GitHub outage is not hit on every dashboard refresh.
+     */
+    private function latestFirmwareVersion(string $panelId): ?string
+    {
+        $key = 'firmware_latest_' . $panelId;
+        $cached = Cache::get($key);
+        if ($cached !== null) {
+            return $cached === '' ? null : $cached;
+        }
+
+        try {
+            $version = trim(Http::timeout(5)
+                ->get(config('tracker.firmware.version_urls.' . $panelId))
+                ->throw()
+                ->body());
+            if (! preg_match('/^[0-9A-Za-z.+_-]{1,32}$/', $version)) {
+                $version = null;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Could not read the latest firmware version: ' . $e->getMessage());
+            $version = null;
+        }
+
+        Cache::put($key, $version ?? '', $version === null ? now()->addMinute() : now()->addMinutes(5));
+
+        return $version;
     }
 
     public function weatherHistory(Request $request)

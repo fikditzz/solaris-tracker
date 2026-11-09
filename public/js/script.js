@@ -6,6 +6,7 @@ const LOGS_PER_PAGE = 7;
 const LOG_REFRESH_MS = 10000;
 const SERIES_REFRESH_MS = 60000;
 const WEATHER_REFRESH_MS = 5 * 60 * 1000;
+const FIRMWARE_REFRESH_MS = 60000;
 
 const PAGE_TITLES = {
     dashboard: 'Main Dashboard',
@@ -37,6 +38,7 @@ const state = {
     logPage: 1,
     logRows: [],
     logFilters: { start: '', end: '', status: '' },
+    firmware: null,
     pickers: {},
     selects: {},
 };
@@ -114,6 +116,7 @@ function refreshView(view) {
         loadWeatherHistory();
     }
     if (view === 'logs') loadLogs();
+    if (view === 'settings') loadFirmware();
 }
 
 function navigateTo(view, { updateHash = true } = {}) {
@@ -189,6 +192,7 @@ function switchPanel(panelId, { silent = false } = {}) {
     state.latest = null;
     state.logPage = 1;
     renderLatest(null);
+    renderFirmware();
     fetchLatest();
     refreshView(state.view);
     if (!silent) showToast('info', `Switched to ${panel.label}`);
@@ -634,6 +638,64 @@ async function loadAnalyticsSeries() {
 
 /* Weather */
 
+const FIRMWARE_STATES = {
+    up_to_date: { label: 'Up to date', pill: 'is-locked' },
+    update_available: { label: 'Update pending', pill: 'is-tracking' },
+    unknown: { label: 'Not reported', pill: 'is-none' },
+};
+
+const formatVersion = (version) => (version ? `v${version}` : '--');
+
+function renderFirmware() {
+    const info = state.firmware;
+    const list = byId('firmware-list');
+    if (!info) {
+        list.innerHTML = '<div class="text-muted small">Firmware versions are unavailable right now.</div>';
+        setText('trk-firmware', '--');
+        setText('trk-firmware-note', 'Unavailable');
+        return;
+    }
+
+    list.innerHTML = Object.entries(PANELS).map(([panelId, panel]) => {
+        const row = info.data[panelId] || { state: 'unknown' };
+        const status = FIRMWARE_STATES[row.state] || FIRMWARE_STATES.unknown;
+        const seen = row.last_seen ? `Reported ${formatDateTime(row.last_seen)} WITA` : 'No firmware reported yet';
+        return `
+            <div class="firmware-row">
+                <div class="firmware-array">
+                    <div class="fw-semibold">${escapeHtml(panel.name)}</div>
+                    <div class="text-xs text-muted">${escapeHtml(panel.type)}</div>
+                </div>
+                <dl class="firmware-versions">
+                    <div><dt>Installed</dt><dd>${escapeHtml(formatVersion(row.installed))}</dd></div>
+                    <div><dt>Latest</dt><dd>${escapeHtml(formatVersion(row.latest))}</dd></div>
+                </dl>
+                <span class="status-pill ${status.pill}"><span style="display:inline-block; width:6px; height:6px; background:currentColor; border-radius:50%;"></span>${escapeHtml(status.label)}</span>
+                <div class="firmware-seen text-xs text-muted">${escapeHtml(seen)}</div>
+            </div>`;
+    }).join('');
+
+    if (info.repo_url) byId('firmware-repo-link').href = info.repo_url;
+
+    const current = info.data[state.panelId] || { state: 'unknown' };
+    setText('trk-firmware', formatVersion(current.installed));
+    setText('trk-firmware-note', {
+        up_to_date: 'Up to date',
+        update_available: `Update to ${formatVersion(current.latest)} pending`,
+        unknown: current.installed ? 'Latest version unavailable' : 'Not reported by the device yet',
+    }[current.state] || '');
+}
+
+async function loadFirmware() {
+    try {
+        state.firmware = await apiGet('firmware');
+    } catch (error) {
+        console.error('Could not load firmware versions:', error);
+        state.firmware = null;
+    }
+    renderFirmware();
+}
+
 async function loadWeather() {
     try {
         const { data, stale } = await apiGet('weather/latest');
@@ -836,6 +898,7 @@ function showLogDetail(log) {
         ['Condition', [
             ['Mode', log.tracking_mode],
             ['Weather', log.weather_status || 'Unknown'],
+            ...(log.firmware_version ? [['Firmware', formatVersion(log.firmware_version)]] : []),
         ]],
         ['Electrical', [
             ['Voltage', `${formatNumber(log.voltage, 2)} V`],
@@ -1146,6 +1209,10 @@ function init() {
     restartPolling();
     loadWeather();
     setInterval(loadWeather, WEATHER_REFRESH_MS);
+    loadFirmware();
+    setInterval(() => {
+        if (!document.hidden) loadFirmware();
+    }, FIRMWARE_REFRESH_MS);
     setInterval(() => {
         if (document.hidden) return;
         if (state.view === 'dashboard') loadDashboardSeries();
