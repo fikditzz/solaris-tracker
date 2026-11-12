@@ -29,7 +29,7 @@ class TrackerLog extends Model
         'panel_id',
         'irradiance', 'power_output', 'voltage', 'current',
         'battery_percentage', 'battery_voltage', 'battery_current',
-        'azimuth', 'elevation',
+        'azimuth', 'elevation', 'target_azimuth', 'target_elevation',
         'ldr_nw', 'ldr_ne', 'ldr_sw', 'ldr_se',
         'motor1_load', 'motor2_load',
         'tracking_mode', 'weather_status', 'firmware_version', 'created_at'

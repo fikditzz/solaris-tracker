@@ -39,6 +39,8 @@ class TrackerLogController extends Controller
                 'battery_current' => 'nullable|numeric',
                 'azimuth' => 'nullable|numeric',
                 'elevation' => 'nullable|numeric',
+                'target_azimuth' => 'nullable|numeric',
+                'target_elevation' => 'nullable|numeric',
                 'ldr_nw' => 'nullable|numeric',
                 'ldr_ne' => 'nullable|numeric',
                 'ldr_sw' => 'nullable|numeric',

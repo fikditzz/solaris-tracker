@@ -433,6 +433,8 @@ body, .card-custom, .bg-light, .bg-white, .text-dark, .text-muted {
 .manual-now { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; }
 .manual-note { color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 0.75rem 0 0; }
 
+.target-note { margin-top: 0.35rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+
 .firmware-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; padding: 0.85rem 0; border-top: 1px solid var(--border-color); }
 .firmware-row:first-child { border-top: 0; padding-top: 0; }
 .firmware-array { flex: 1 1 100px; min-width: 0; }

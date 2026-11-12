@@ -410,6 +410,7 @@
                                            <div class="text-muted fw-bold mb-3" style="letter-spacing: 2px;">AZIMUTH</div>
                                            <div class="display-3 fw-bolder text-dark mb-1"><span id="trk-azimuth" class="animated-value">--</span>°</div>
                                            <div class="text-primary fw-semibold" id="trk-azimuth-lbl">No data</div>
+                                           <div class="target-note" id="trk-azimuth-target" hidden></div>
                                       </div>
                                   </div>
                                   <div class="col-6 transition-all" id="elevation-data-card">
@@ -418,6 +419,7 @@
                                            <div class="text-muted fw-bold mb-3" style="letter-spacing: 2px;">ELEVATION</div>
                                            <div class="display-3 fw-bolder text-dark mb-1"><span id="trk-elevation" class="animated-value">--</span>°</div>
                                            <div class="text-warning fw-semibold" id="trk-elevation-lbl">No data</div>
+                                           <div class="target-note" id="trk-elevation-target" hidden></div>
                                       </div>
                                   </div>
                               </div>

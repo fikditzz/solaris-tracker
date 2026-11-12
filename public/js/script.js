@@ -278,6 +278,18 @@ function renderPosition(data) {
 
     setText('trk-azimuth-lbl', data ? `Facing ${compassName(azimuth)}` : 'No data');
     setText('trk-elevation-lbl', data ? 'Reported panel tilt' : 'No data');
+
+    // Array Alpha reports both targets; Array Beta keeps its single target angle in the azimuth column.
+    const dual = state.panelId === 'panel1';
+    showTarget('trk-azimuth-target', dual && data ? data.target_azimuth : null);
+    showTarget('trk-elevation-target', data ? (dual ? data.target_elevation : data.azimuth) : null);
+}
+
+function showTarget(id, value) {
+    const el = byId(id);
+    const known = value !== null && value !== undefined && !Number.isNaN(Number(value));
+    el.hidden = !known;
+    el.textContent = known ? `Target ${formatNumber(value, 1)}°` : '';
 }
 
 function renderLdr(data) {
@@ -908,6 +920,8 @@ function showLogDetail(log) {
         ['Position', [
             [dual ? 'Azimuth' : 'Target angle', `${formatNumber(log.azimuth)}°`],
             [dual ? 'Elevation' : 'Current angle', `${formatNumber(log.elevation)}°`],
+            ...(dual && log.target_azimuth != null ? [['Target azimuth', `${formatNumber(log.target_azimuth)}°`]] : []),
+            ...(dual && log.target_elevation != null ? [['Target elevation', `${formatNumber(log.target_elevation)}°`]] : []),
         ]],
     ];
     if (dual) {
@@ -1001,10 +1015,14 @@ async function exportLogs() {
         return;
     }
     const dual = panelId === 'panel1';
-    const header = ['Timestamp (WITA)', 'Azimuth', 'Elevation', 'Voltage (V)', 'Current (A)', 'Power (W)',
+    // Array Beta stores its target angle in azimuth and its current angle in elevation.
+    const position = dual ? ['Azimuth', 'Elevation', 'Target azimuth', 'Target elevation'] : ['Target angle', 'Current angle'];
+    const header = ['Timestamp (WITA)', ...position, 'Voltage (V)', 'Current (A)', 'Power (W)',
         ...(dual ? ['LDR North', 'LDR East', 'LDR West', 'LDR South'] : []), 'Mode', 'Status', 'Weather'];
     const rows = data.map((row) => [
-        excelDate(row.created_at), row.azimuth, row.elevation, row.voltage, row.current, row.power_output,
+        excelDate(row.created_at), row.azimuth, row.elevation,
+        ...(dual ? [row.target_azimuth ?? null, row.target_elevation ?? null] : []),
+        row.voltage, row.current, row.power_output,
         ...(dual ? [row.ldr_nw, row.ldr_ne, row.ldr_sw, row.ldr_se] : []), row.tracking_mode, row.status, row.weather_status,
     ]);
     await downloadWorkbook(`solaris_${panelId}_logs_${Date.now()}.xlsx`, 'Logs', header, rows);

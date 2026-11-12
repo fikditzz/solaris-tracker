@@ -59,6 +59,9 @@ def on_message(client, userdata, msg):
                 'panel_id': 'panel1',
                 'azimuth': payload.get('azimuth', 0),
                 'elevation': payload.get('elevation', 0),
+                # Firmware 2 sumbu yang lebih lama tidak mengirim target; None tersimpan sebagai kosong.
+                'target_azimuth': payload.get('target_azimuth'),
+                'target_elevation': payload.get('target_elevation'),
                 'voltage': v,
                 'current': i,
                 'power_output': p,
