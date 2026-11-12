@@ -178,14 +178,14 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-custom" id="dash-ldr-widget">
+                    <div class="card-custom dash-grow" id="dash-ldr-widget">
                          <div class="card-header-custom pb-2">
                             <div class="d-flex align-items-center gap-2 fw-bold text-sm">
                                 <span class="material-symbols-rounded text-secondary" style="font-size:18px" aria-hidden="true">sensors</span> LDR Sensor Grid
                             </div>
                         </div>
                         <div class="card-body-custom pt-0">
-                            <div class="row g-2 text-center">
+                            <div class="row g-2 text-center dash-tile-grid">
 
                                 <div class="col-12">
                                     <div class="p-3 bg-primary bg-opacity-10 border border-primary-subtle rounded-3" id="dash-box-ldr-nw">
@@ -228,6 +228,67 @@
                             </div>
                         </div>
                     </div>
+                    <div class="card-custom" id="dash-energy-widget" style="display: none;">
+                        <div class="card-header-custom">
+                            <div class="d-flex align-items-center gap-2 fw-bold">
+                                <span class="material-symbols-rounded text-warning" aria-hidden="true">bolt</span> Energy (24h)
+                            </div>
+                        </div>
+                        <div class="card-body-custom pt-0">
+                            <div class="text-xs text-muted mb-1">ESTIMATED ENERGY</div>
+                            <div class="d-flex align-items-baseline mb-4">
+                                <span class="text-big" id="dash-energy">--</span>
+                                <span class="val-unit ms-2">Wh</span>
+                            </div>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="text-xs text-muted mb-1">PEAK POWER</div>
+                                    <div class="fs-4 fw-bold"><span id="dash-peak-power">--</span><span class="fs-6 text-muted ms-1">W</span></div>
+                                </div>
+                                <div class="col-6 border-start">
+                                    <div class="text-xs text-muted mb-1">AVERAGE POWER</div>
+                                    <div class="fs-4 fw-bold"><span id="dash-avg-power">--</span><span class="fs-6 text-muted ms-1">W</span></div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-muted mt-3" id="dash-energy-note">Loading the last 24 hours</div>
+                        </div>
+                    </div>
+                    <div class="card-custom dash-grow" id="dash-weather-widget" style="display: none;">
+                        <div class="card-header-custom pb-2">
+                            <div class="d-flex align-items-center gap-2 fw-bold text-sm">
+                                <span class="material-symbols-rounded text-secondary" style="font-size:18px" aria-hidden="true">partly_cloudy_day</span> Site Weather
+                            </div>
+                        </div>
+                        <div class="card-body-custom pt-0">
+                            <div class="row g-2 text-center dash-tile-grid">
+                                <div class="col-6">
+                                    <div class="p-3 bg-light border rounded-3 h-100">
+                                        <div class="text-xs text-secondary fw-bold mb-1">HUMIDITY</div>
+                                        <div class="fs-4 fw-bold text-dark"><span id="dash-humidity">--</span><span class="fs-6 text-muted ms-1">%</span></div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 bg-light border rounded-3 h-100">
+                                        <div class="text-xs text-secondary fw-bold mb-1">CLOUD COVER</div>
+                                        <div class="fs-4 fw-bold text-dark"><span id="dash-cloud">--</span><span class="fs-6 text-muted ms-1">%</span></div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 bg-light border rounded-3 h-100">
+                                        <div class="text-xs text-secondary fw-bold mb-1">WIND</div>
+                                        <div class="fs-4 fw-bold text-dark"><span id="dash-wind">--</span><span class="fs-6 text-muted ms-1">km/h</span></div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 bg-light border rounded-3 h-100">
+                                        <div class="text-xs text-secondary fw-bold mb-1">RAIN</div>
+                                        <div class="fs-4 fw-bold text-dark"><span id="dash-rain">--</span><span class="fs-6 text-muted ms-1">mm</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-muted mt-3" id="dash-weather-note">No weather recorded yet</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="col-lg-6 col-xl-4 d-flex flex-column gap-4">
@@ -255,7 +316,8 @@
 
                                         <div id="dash-azimuth-ptr" style="position: absolute; width: 100%; height: 100%; transition: transform 0.5s ease; display: flex; align-items: center; justify-content: center; z-index: 2;">
 
-                                            <div class="panel-diamond shadow-sm" style="transform: none !important;">
+                                            <div class="azimuth-needle" aria-hidden="true"></div>
+                                             <div class="panel-diamond shadow-sm" style="transform: none !important;">
                                                 <span class="material-symbols-rounded icon" aria-hidden="true">solar_power</span>
                                             </div>
                                         </div>
@@ -314,9 +376,46 @@
                             </div>
                         </div>
                     </div>
+                    <div class="card-custom dash-grow" id="dash-device-widget">
+                        <div class="card-header-custom">
+                            <div class="d-flex align-items-center gap-2 fw-bold">
+                                <span class="material-symbols-rounded text-warning" aria-hidden="true">memory</span> Device Status
+                            </div>
+                            <span class="status-pill is-none" id="dash-device-pill">Waiting</span>
+                        </div>
+                        <div class="card-body-custom pt-0 device-facts">
+                            <div class="device-fact">
+                                <div class="text-xs text-muted mb-1">LAST REPORT</div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="fw-semibold" id="dash-device-seen">No data yet</div>
+                                    <span class="material-symbols-rounded text-muted" aria-hidden="true">sensors</span>
+                                </div>
+                            </div>
+                            <div class="device-fact">
+                                <div class="text-xs text-muted mb-1">FIRMWARE</div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-semibold" id="dash-device-firmware">--</div>
+                                        <div class="text-xs text-muted" id="dash-device-firmware-note"></div>
+                                    </div>
+                                    <span class="material-symbols-rounded text-warning" aria-hidden="true">system_update</span>
+                                </div>
+                            </div>
+                            <div class="device-fact">
+                                <div class="text-xs text-muted mb-1">TRACKING ERROR</div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="fw-semibold" id="dash-device-error">--</div>
+                                        <div class="text-xs text-muted" id="dash-device-error-note"></div>
+                                    </div>
+                                    <span class="material-symbols-rounded text-primary" aria-hidden="true">my_location</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="col-xl-4 d-flex flex-column gap-4">
-                    <div class="card-custom">
+                    <div class="card-custom dash-chart-card">
                         <div class="card-header-custom pb-0">
                             <div class="d-flex align-items-center gap-2 fw-bold">
                                 <span class="material-symbols-rounded text-primary" aria-hidden="true">show_chart</span> Power Gen (24h)
@@ -324,20 +423,20 @@
                             <span class="badge bg-light text-secondary border">WATT</span>
                         </div>
                         <div class="card-body-custom pt-2">
-                            <div style="height: 180px; position: relative;">
+                            <div class="dash-chart-box">
                                 <canvas id="chartDashPower" role="img" aria-label="Average power over the last 24 hours"></canvas>
                                 @include('partials.chart-state', ['id' => 'chartDashPower'])
                             </div>
                         </div>
                     </div>
-                    <div class="card-custom">
+                    <div class="card-custom dash-chart-card">
                         <div class="card-header-custom pb-0">
                             <div class="d-flex align-items-center gap-2 fw-bold">
                                 <span class="material-symbols-rounded text-primary" aria-hidden="true">ssid_chart</span> Voltage vs Current (24h)
                             </div>
                         </div>
                         <div class="card-body-custom pt-2">
-                             <div style="height: 180px; position: relative;">
+                             <div class="dash-chart-box">
                                 <canvas id="chartDashVA" role="img" aria-label="Average voltage and current over the last 24 hours"></canvas>
                                 @include('partials.chart-state', ['id' => 'chartDashVA'])
                             </div>
@@ -351,7 +450,7 @@
               <h2 class="mb-4 transition-all" id="tracker-panel-title">Dual-Axis Tracker Array</h2>
               <div class="row g-4 mb-4">
                 <div class="col-xl-8">
-                     <div class="card-custom">
+                     <div class="card-custom h-100">
                          <div class="card-header-custom">
                              <div class="text-xs text-muted fw-bold">REAL-TIME ORIENTATION</div>
                              <span class="status-pill is-none" id="trk-status-badge" role="status">No data</span>
@@ -373,7 +472,9 @@
                                          <div style="position: absolute; width: 4px; height: 140px; background: rgba(100, 116, 139, 0.25); border-radius: 2px; z-index: 1;"></div>
 
 
+                                         <div id="trk-azimuth-target-ptr" class="target-ghost-az" hidden></div>
                                          <div id="trk-azimuth-ptr" style="position: absolute; width: 100%; height: 100%; transition: transform 0.5s ease; display: flex; align-items: center; justify-content: center; z-index: 2;">
+                                             <div class="azimuth-needle" aria-hidden="true"></div>
                                              <div class="panel-diamond shadow-sm" style="transform: none !important;">
                                                  <span class="material-symbols-rounded icon" aria-hidden="true">solar_power</span>
                                              </div>
@@ -393,6 +494,7 @@
                                          <div style="position: absolute; bottom: 35px; left: calc(50% - 25px); width: 6px; height: 20px; background: #94A3B8; border-radius: 3px; transform: rotate(30deg);"></div>
 
                                          <div style="position: absolute; bottom: 65px; left: 50%; width: 2px; height: 0; overflow: visible;">
+                                             <div id="trk-elevation-target-ptr" class="target-ghost-el" hidden></div>
                                              <div id="trk-elevation-ptr" style="position: absolute; bottom: -4px; left: -45px; width: 90px; height: 8px; background: #F59E0B; border-radius: 4px; transform-origin: 50% 50%; transition: transform 0.5s ease; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.2);">
                                                  <div style="position: absolute; top: -3px; left: 5%; width: 90%; height: 3px; background: #FEF3C7; border-radius: 2px;"></div>
 
@@ -403,11 +505,15 @@
                                      </div>
                                  </div>
                              </div>
+                              <div class="map-legend" id="trk-map-legend" hidden>
+                                  <span><i class="legend-current"></i>Current position</span>
+                                  <span><i class="legend-target"></i>Target</span>
+                              </div>
                               <div class="row mt-4 flex-nowrap overflow-hidden">
                                   <div class="col-6 transition-all" id="azimuth-data-card">
                                       <div class="p-4 bg-light rounded-4 text-center border h-100 d-flex flex-column justify-content-center position-relative overflow-hidden">
                                            <span class="material-symbols-rounded position-absolute text-primary" style="font-size: 150px; opacity: 0.05; right: -20px; bottom: -20px; pointer-events: none;" aria-hidden="true">explore</span>
-                                           <div class="text-muted fw-bold mb-3" style="letter-spacing: 2px;">AZIMUTH</div>
+                                           <div class="text-muted fw-bold mb-3" style="letter-spacing: 2px;" id="trk-azimuth-title">AZIMUTH</div>
                                            <div class="display-3 fw-bolder text-dark mb-1"><span id="trk-azimuth" class="animated-value">--</span>°</div>
                                            <div class="text-primary fw-semibold" id="trk-azimuth-lbl">No data</div>
                                            <div class="target-note" id="trk-azimuth-target" hidden></div>
@@ -416,7 +522,7 @@
                                   <div class="col-6 transition-all" id="elevation-data-card">
                                       <div class="p-4 bg-light rounded-4 text-center border h-100 d-flex flex-column justify-content-center position-relative overflow-hidden">
                                            <span class="material-symbols-rounded position-absolute text-warning" style="font-size: 150px; opacity: 0.05; left: -20px; bottom: -20px; pointer-events: none;" aria-hidden="true">height</span>
-                                           <div class="text-muted fw-bold mb-3" style="letter-spacing: 2px;">ELEVATION</div>
+                                           <div class="text-muted fw-bold mb-3" style="letter-spacing: 2px;" id="trk-elevation-title">ELEVATION</div>
                                            <div class="display-3 fw-bolder text-dark mb-1"><span id="trk-elevation" class="animated-value">--</span>°</div>
                                            <div class="text-warning fw-semibold" id="trk-elevation-lbl">No data</div>
                                            <div class="target-note" id="trk-elevation-target" hidden></div>
@@ -488,7 +594,7 @@
              </div>
              <div class="row g-4">
                  <div class="col-xl-6" id="trk-ldr-widget">
-                     <div class="card-custom">
+                     <div class="card-custom h-100">
                          <div class="card-header-custom pb-0">
                              <div class="text-xs text-muted fw-bold">IRRADIANCE DETECTION</div>
                              <div class="text-end">
@@ -543,6 +649,39 @@
                                       </div>
                                   </div>
                               </div>
+                         </div>
+                     </div>
+                 </div>
+                 <div class="col-xl-6" id="trk-accuracy-col">
+                     <div class="card-custom h-100 dash-grow">
+                         <div class="card-header-custom pb-0">
+                             <div class="text-xs text-muted fw-bold">TRACKING ACCURACY</div>
+                             <span class="status-pill is-none" id="trk-accuracy-pill">No data</span>
+                         </div>
+                         <div class="card-body-custom">
+                             <h4 class="mb-4">Target vs Position</h4>
+                             <div id="trk-accuracy-rows" class="d-flex flex-column gap-4"><div class="text-muted small">No reading yet</div></div>
+                             <div class="row g-2 text-center dash-tile-grid mt-3">
+                                 <div class="col-6 col-sm-4">
+                                     <div class="p-3 bg-light border rounded-3">
+                                         <div class="text-xs text-secondary fw-bold mb-1" id="trk-acc-signal-label">LDR DIFFERENCE</div>
+                                         <div class="fs-4 fw-bold text-dark" id="trk-acc-signal">--</div>
+                                     </div>
+                                 </div>
+                                 <div class="col-6 col-sm-4">
+                                     <div class="p-3 bg-light border rounded-3">
+                                         <div class="text-xs text-secondary fw-bold mb-1">LOCKS AT</div>
+                                         <div class="fs-4 fw-bold text-dark" id="trk-acc-threshold">--</div>
+                                     </div>
+                                 </div>
+                                 <div class="col-12 col-sm-4">
+                                     <div class="p-3 bg-light border rounded-3">
+                                         <div class="text-xs text-secondary fw-bold mb-1">MODE</div>
+                                         <div class="fs-4 fw-bold text-dark" id="trk-acc-mode">--</div>
+                                     </div>
+                                 </div>
+                             </div>
+                             <div class="accuracy-rule" id="trk-accuracy-rule"></div>
                          </div>
                      </div>
                  </div>

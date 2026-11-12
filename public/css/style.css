@@ -224,7 +224,7 @@ body {
 .crosshair-h { position: absolute; width: 100%; height: 1px; background: #E5E7EB; }
 .crosshair-v { position: absolute; height: 100%; width: 1px; background: #E5E7EB; }
 .panel-diamond {
-    width: 60px; height: 100px;
+    width: 44px; height: 72px;
     background: linear-gradient(135deg, #60A5FA, #3B82F6);
     border: 2px solid #1D4ED8;
     border-radius: 4px;
@@ -240,7 +240,7 @@ body {
     background: repeating-linear-gradient(0deg, transparent, transparent 9px, rgba(255,255,255,0.2) 9px, rgba(255,255,255,0.2) 10px),
                 repeating-linear-gradient(90deg, transparent, transparent 19px, rgba(255,255,255,0.2) 19px, rgba(255,255,255,0.2) 20px);
 }
-.panel-diamond .icon { color: white; font-size: 24px; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+.panel-diamond .icon { color: white; font-size: 20px; z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 .sun-indicator {
     position: absolute; top: 20px; left: 40px;
     color: var(--primary-hover);
@@ -432,6 +432,47 @@ body, .card-custom, .bg-light, .bg-white, .text-dark, .text-muted {
 .manual-target.is-locked { opacity: 0.5; }
 .manual-now { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.35rem; }
 .manual-note { color: var(--text-muted); font-size: 0.8rem; text-align: center; margin: 0.75rem 0 0; }
+
+/* Dashboard columns end level: the last card of each column takes the spare height. */
+.dash-grow { flex-grow: 1; display: flex; flex-direction: column; }
+.dash-grow > .card-body-custom { flex: 1; display: flex; flex-direction: column; }
+/* Device facts split the stretched card into equal rows instead of leaving a gap below. */
+.device-facts { padding-bottom: 0.5rem; }
+.device-fact { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0.85rem 0; border-bottom: 1px solid var(--border-color); }
+.device-fact:first-child { padding-top: 0.25rem; }
+.device-fact:last-child { border-bottom: 0; }
+/* Sensor and weather tiles share the stretched height instead of leaving a gap below. */
+.dash-tile-grid { flex: 1; align-content: stretch; }
+.dash-tile-grid > [class*="col-"] > div { height: 100%; display: flex; flex-direction: column; justify-content: center; }
+.dash-chart-card { flex: 1 1 0; display: flex; flex-direction: column; }
+.dash-chart-card > .card-body-custom { flex: 1; display: flex; flex-direction: column; }
+.dash-chart-box { position: relative; flex: 1; min-height: 180px; }
+
+:root { --target-color: #16A34A; --accuracy-near: #D97706; --accuracy-far: #DC2626; }
+[data-bs-theme="dark"] { --target-color: #4ADE80; --accuracy-near: #FBBF24; --accuracy-far: #F87171; }
+.target-ghost-az { position: absolute; inset: 0; z-index: 3; transition: transform 0.5s ease; pointer-events: none; }
+.target-ghost-az::before { content: ''; position: absolute; top: 6px; left: calc(50% - 1px); height: 26px; border-left: 2px dashed var(--target-color); }
+.target-ghost-az::after { content: ''; position: absolute; top: -8px; left: calc(50% - 7px); width: 14px; height: 14px; border-radius: 50%; background: var(--surface); border: 3px solid var(--target-color); }
+/* Points where the panel faces; it turns with the panel, so it always sits at the reported azimuth. */
+.azimuth-needle { position: absolute; top: 18px; left: calc(50% - 2px); width: 4px; height: 14px; background: #F59E0B; border-radius: 2px; z-index: 3; pointer-events: none; }
+.azimuth-needle::before { content: ''; position: absolute; top: -8px; left: -4px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 9px solid #F59E0B; }
+.target-ghost-el { position: absolute; bottom: -4px; left: -45px; width: 90px; height: 8px; border: 2px dashed var(--target-color); border-radius: 4px; transform-origin: 50% 50%; transition: transform 0.5s ease; pointer-events: none; }
+.map-legend { display: flex; justify-content: center; gap: 1.25rem; margin-top: -0.75rem; font-size: 0.75rem; color: var(--text-muted); }
+.map-legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+.map-legend i { display: inline-block; width: 16px; height: 6px; border-radius: 3px; }
+.legend-current { background: #F59E0B; }
+.legend-target { border: 2px dashed var(--target-color); }
+.accuracy-row { display: flex; flex-direction: column; gap: 0.4rem; }
+.accuracy-gap { font-weight: 700; font-size: 1.1rem; color: var(--text-muted); }
+.accuracy-gap.is-good { color: var(--target-color); }
+.accuracy-gap.is-near { color: var(--accuracy-near); }
+.accuracy-gap.is-far { color: var(--accuracy-far); }
+.accuracy-bar { height: 8px; border-radius: 4px; background: var(--bg-color); border: 1px solid var(--border-color); overflow: hidden; }
+.accuracy-bar span { display: block; height: 100%; min-width: 4px; background: var(--text-muted); border-radius: 4px; }
+.accuracy-bar.is-good span { background: var(--target-color); }
+.accuracy-bar.is-near span { background: var(--accuracy-near); }
+.accuracy-bar.is-far span { background: var(--accuracy-far); }
+.accuracy-rule { padding-top: 1rem; font-size: 0.8rem; color: var(--text-muted); }
 
 .target-note { margin-top: 0.35rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
 

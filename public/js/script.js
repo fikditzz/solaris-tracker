@@ -171,10 +171,12 @@ function switchPanel(panelId, { silent = false } = {}) {
     setText('panelDropdownAxis', ` ${panel.label.slice(panel.name.length + 1)}`);
     state.selects.subsystem?.setValue(panelId, true);
 
-    ['azimuth-map-col', 'azimuth-data-card', 'dash-azimuth-map-col', 'dash-azimuth-val-col', 'dash-ldr-widget', 'trk-ldr-widget', 'manual-azimuth-field']
+    ['azimuth-map-col', 'dash-azimuth-map-col', 'dash-azimuth-val-col', 'dash-ldr-widget', 'trk-ldr-widget', 'manual-azimuth-field']
         .forEach((id) => setDisplay(id, !single));
-    ['elevation-map-col', 'elevation-data-card', 'dash-elevation-map-col', 'dash-elevation-val-col', 'manual-elevation-field']
+    ['elevation-map-col', 'dash-elevation-map-col', 'dash-elevation-val-col', 'manual-elevation-field']
         .forEach((id) => setColumn(id, single, 'col-6', 'col-12'));
+    setColumn('trk-accuracy-col', single, 'col-xl-6', 'col-12');
+    ['dash-energy-widget', 'dash-weather-widget'].forEach((id) => setDisplay(id, single));
     byId('manual-target-form').reset();
 
     document.querySelectorAll('[data-panel]').forEach((el) => {
@@ -218,12 +220,83 @@ function animateValueChange(id, newValue, decimals = 1) {
     setTimeout(() => el.classList.remove('val-up', 'val-down'), 400);
 }
 
+function renderEnergySummary(summary) {
+    const samples = summary ? summary.samples : 0;
+    setText('dash-energy', samples ? formatNumber(summary.energy_wh, 1) : '--');
+    setText('dash-peak-power', samples ? formatNumber(summary.peak_power, 1) : '--');
+    setText('dash-avg-power', samples ? formatNumber(summary.avg_power, 1) : '--');
+    setText('dash-energy-note', summary
+        ? (samples ? `From ${samples.toLocaleString()} readings in the last 24 hours` : 'No readings in the last 24 hours')
+        : 'Could not load the last 24 hours');
+}
+
+function renderWeatherDetails(data, note) {
+    setText('dash-humidity', data ? formatNumber(data.humidity, 0) : '--');
+    setText('dash-cloud', data ? formatNumber(data.cloud_cover, 0) : '--');
+    setText('dash-wind', data ? formatNumber(data.wind_speed, 1) : '--');
+    setText('dash-rain', data ? formatNumber(data.precipitation, 1) : '--');
+    setText('dash-weather-note', note);
+}
+
+function timeAgo(iso) {
+    const minutes = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 48) return `${hours} h ago`;
+    return `${Math.round(hours / 24)} days ago`;
+}
+
+// Smallest gap between two compass headings, so 359° and 1° are 2° apart.
+const angleGap = (a, b) => {
+    const gap = Math.abs(Number(a) - Number(b)) % 360;
+    return gap > 180 ? 360 - gap : gap;
+};
+
+function renderDeviceStatus() {
+    const data = state.latest;
+    const pill = byId('dash-device-pill');
+    const connection = {
+        online: ['is-locked', 'Online'],
+        offline: ['is-stopped', 'Offline'],
+        waiting: ['is-none', 'Waiting'],
+    }[state.connection] || ['is-none', 'Waiting'];
+    pill.className = `status-pill ${connection[0]}`;
+    pill.textContent = connection[1];
+
+    setText('dash-device-seen', data ? `${formatDateTime(data.created_at)} WITA (${timeAgo(data.created_at)})` : 'No data yet');
+
+    const firmware = state.firmware?.data?.[state.panelId];
+    setText('dash-device-firmware', formatVersion(firmware?.installed));
+    setText('dash-device-firmware-note', !state.firmware ? 'Unavailable' : {
+        up_to_date: 'Up to date',
+        update_available: `Update to ${formatVersion(firmware.latest)} pending`,
+    }[firmware?.state] || (firmware?.installed ? 'Latest version unavailable' : 'Not reported by the device yet'));
+
+    // Array Beta keeps its target angle in azimuth and its current angle in elevation.
+    let error = '--';
+    let note = 'No reading yet';
+    if (data && state.panelId === 'panel2') {
+        error = `${formatNumber(Math.abs(data.azimuth - data.elevation), 1)}°`;
+        note = `Target ${formatNumber(data.azimuth, 1)}°, current ${formatNumber(data.elevation, 1)}°`;
+    } else if (data) {
+        const hasTarget = data.target_azimuth != null && data.target_elevation != null;
+        error = hasTarget
+            ? `Az ${formatNumber(angleGap(data.target_azimuth, data.azimuth), 1)}°, El ${formatNumber(Math.abs(data.target_elevation - data.elevation), 1)}°`
+            : '--';
+        note = hasTarget ? 'Gap between target and current position' : 'The device has not reported a target yet';
+    }
+    setText('dash-device-error', error);
+    setText('dash-device-error-note', note);
+}
+
 function renderConnection(kind, text) {
     state.connection = kind;
     const badge = byId('system-status-badge');
     badge.classList.remove('is-online', 'is-offline', 'is-waiting');
     badge.classList.add(`is-${kind}`);
     setText('system-status-text', text);
+    renderDeviceStatus();
 }
 
 function renderModeControls(mode) {
@@ -276,20 +349,134 @@ function renderPosition(data) {
         byId(`${prefix}-elevation-ptr`).style.transform = `rotate(${(elevation ?? 90) - 90}deg)`;
     });
 
-    setText('trk-azimuth-lbl', data ? `Facing ${compassName(azimuth)}` : 'No data');
-    setText('trk-elevation-lbl', data ? 'Reported panel tilt' : 'No data');
-
     // Array Alpha reports both targets; Array Beta keeps its single target angle in the azimuth column.
     const dual = state.panelId === 'panel1';
-    showTarget('trk-azimuth-target', dual && data ? data.target_azimuth : null);
-    showTarget('trk-elevation-target', data ? (dual ? data.target_elevation : data.azimuth) : null);
+    const targets = trackerTargets(data);
+    setText('trk-azimuth-title', dual ? 'AZIMUTH' : 'TARGET ANGLE');
+    setText('trk-elevation-title', dual ? 'ELEVATION' : 'CURRENT ANGLE');
+    setText('trk-azimuth-lbl', !data ? 'No data' : dual ? `Facing ${compassName(azimuth)}` : 'Astronomical target');
+    setText('trk-elevation-lbl', data ? 'Reported panel tilt' : 'No data');
+
+    if (dual) {
+        showTarget('trk-azimuth-target', targets.azimuth, (value) => `Target ${formatNumber(value, 1)}°`);
+        showTarget('trk-elevation-target', targets.elevation, (value) => `Target ${formatNumber(value, 1)}°`);
+    } else {
+        showTarget('trk-azimuth-target', null);
+        showTarget('trk-elevation-target', targets.elevation, (value) => `${formatNumber(Math.abs(value - elevation), 1)}° from target`);
+    }
+
+    const azGhost = byId('trk-azimuth-target-ptr');
+    azGhost.hidden = !dual || targets.azimuth === null;
+    if (!azGhost.hidden) azGhost.style.transform = `rotate(${targets.azimuth}deg)`;
+    const elGhost = byId('trk-elevation-target-ptr');
+    elGhost.hidden = targets.elevation === null;
+    if (!elGhost.hidden) elGhost.style.transform = `rotate(${targets.elevation - 90}deg)`;
+    byId('trk-map-legend').hidden = targets.azimuth === null && targets.elevation === null;
+
+    renderAccuracy(data, targets);
 }
 
-function showTarget(id, value) {
+const isAngle = (value) => value !== null && value !== undefined && value !== '' && !Number.isNaN(Number(value));
+
+/** Target angles shown on the tracker maps; null where the device has not reported one. */
+function trackerTargets(data) {
+    if (!data) return { azimuth: null, elevation: null };
+    if (state.panelId === 'panel1') {
+        return {
+            azimuth: isAngle(data.target_azimuth) ? Number(data.target_azimuth) : null,
+            elevation: isAngle(data.target_elevation) ? Number(data.target_elevation) : null,
+        };
+    }
+    return { azimuth: null, elevation: isAngle(data.azimuth) ? Number(data.azimuth) : null };
+}
+
+function showTarget(id, value, format) {
     const el = byId(id);
-    const known = value !== null && value !== undefined && !Number.isNaN(Number(value));
+    const known = isAngle(value);
     el.hidden = !known;
-    el.textContent = known ? `Target ${formatNumber(value, 1)}°` : '';
+    el.textContent = known ? format(Number(value)) : '';
+}
+
+// Mirrors TrackerLog: Array Alpha locks on the light sensors, Array Beta within 2° of its target.
+const LOCK_LDR_MARGIN_PERCENT = 15;
+const LOCK_SINGLE_AXIS_DEGREES = 2;
+
+function accuracyLevel(gap) {
+    if (gap <= LOCK_SINGLE_AXIS_DEGREES) return 'is-good';
+    if (gap <= 10) return 'is-near';
+    return 'is-far';
+}
+
+function accuracyRow(name, current, target, gap) {
+    if (gap === null) {
+        return `
+            <div class="accuracy-row">
+                <div class="d-flex justify-content-between align-items-baseline">
+                    <div class="fw-semibold">${escapeHtml(name)}</div>
+                    <div class="accuracy-gap">--</div>
+                </div>
+                <div class="accuracy-bar"><span style="width: 0"></span></div>
+                <div class="text-xs text-muted">Current ${escapeHtml(formatNumber(current, 1))}°, no target reported yet</div>
+            </div>`;
+    }
+    const width = Math.min(gap / 45, 1) * 100;
+    return `
+        <div class="accuracy-row">
+            <div class="d-flex justify-content-between align-items-baseline">
+                <div class="fw-semibold">${escapeHtml(name)}</div>
+                <div class="accuracy-gap ${accuracyLevel(gap)}">${escapeHtml(formatNumber(gap, 1))}° off</div>
+            </div>
+            <div class="accuracy-bar ${accuracyLevel(gap)}"><span style="width: ${width.toFixed(1)}%"></span></div>
+            <div class="d-flex justify-content-between text-xs text-muted">
+                <span>Current ${escapeHtml(formatNumber(current, 1))}°</span>
+                <span>Target ${escapeHtml(formatNumber(target, 1))}°</span>
+            </div>
+        </div>`;
+}
+
+function renderAccuracy(data, targets) {
+    const pill = byId('trk-accuracy-pill');
+    pill.className = `status-pill ${data ? STATUS_CLASSES[data.status] || 'is-none' : 'is-none'}`;
+    pill.textContent = data ? data.status : 'No data';
+
+    const rows = byId('trk-accuracy-rows');
+    const rule = byId('trk-accuracy-rule');
+    const dual = state.panelId === 'panel1';
+    setText('trk-acc-signal-label', dual ? 'LDR DIFFERENCE' : 'TARGET GAP');
+    setText('trk-acc-threshold', dual ? `≤ ${LOCK_LDR_MARGIN_PERCENT}%` : `≤ ${LOCK_SINGLE_AXIS_DEGREES}°`);
+    setText('trk-acc-mode', data ? (data.tracking_mode === 'Stop' ? 'Stopped' : data.tracking_mode || '--') : '--');
+    if (!data) {
+        rows.innerHTML = '<div class="text-muted small">No reading yet</div>';
+        rule.textContent = '';
+        setText('trk-acc-signal', '--');
+        return;
+    }
+
+    if (state.panelId === 'panel1') {
+        const azGap = targets.azimuth === null ? null : angleGap(targets.azimuth, data.azimuth);
+        const elGap = targets.elevation === null ? null : Math.abs(targets.elevation - Number(data.elevation));
+        rows.innerHTML = accuracyRow('Azimuth', data.azimuth, targets.azimuth, azGap)
+            + accuracyRow('Elevation', data.elevation, targets.elevation, elGap);
+        const margin = ldrMargin(data);
+        setText('trk-acc-signal', margin === null ? '--' : `${margin.toFixed(1)}%`);
+        rule.textContent = margin === null
+            ? `Sun Locked is decided by the light sensors (largest difference ${LOCK_LDR_MARGIN_PERCENT}% or less).`
+            : `Sun Locked is decided by the light sensors: their largest difference is ${margin.toFixed(1)}% (locked at ${LOCK_LDR_MARGIN_PERCENT}% or less).`;
+    } else {
+        const gap = targets.elevation === null ? null : Math.abs(targets.elevation - Number(data.elevation));
+        rows.innerHTML = accuracyRow('Panel angle', data.elevation, targets.elevation, gap);
+        setText('trk-acc-signal', gap === null ? '--' : `${formatNumber(gap, 1)}°`);
+        rule.textContent = `Sun Locked when the panel is within ${LOCK_SINGLE_AXIS_DEGREES}° of the astronomical target.`;
+    }
+}
+
+function ldrMargin(data) {
+    if (!data) return null;
+    const [nw, ne, sw, se] = [data.ldr_nw, data.ldr_ne, data.ldr_sw, data.ldr_se].map(Number);
+    const average = (nw + ne + sw + se) / 4;
+    if (!(average > 0)) return null;
+    const maxDiff = Math.max(Math.abs(nw - ne), Math.abs(sw - se), Math.abs(nw - sw), Math.abs(ne - se));
+    return Math.min((maxDiff / average) * 100, 100);
 }
 
 function renderLdr(data) {
@@ -321,15 +508,7 @@ function renderLdr(data) {
         });
     });
 
-    let margin = null;
-    if (data) {
-        const [nw, ne, sw, se] = readings;
-        const average = (nw + ne + sw + se) / 4;
-        if (average > 0) {
-            const maxDiff = Math.max(Math.abs(nw - ne), Math.abs(sw - se), Math.abs(nw - sw), Math.abs(ne - se));
-            margin = Math.min((maxDiff / average) * 100, 100);
-        }
-    }
+    const margin = ldrMargin(data);
     const marginEl = byId('dash-diff-margin');
     marginEl.textContent = margin === null ? '--' : `${margin.toFixed(1)}%`;
     marginEl.classList.toggle('text-success', margin !== null && margin < 10);
@@ -363,6 +542,8 @@ function renderLatest(data) {
     const badge = byId('trk-status-badge');
     badge.className = `status-pill ${data ? STATUS_CLASSES[data.status] || 'is-none' : 'is-none'}`;
     badge.textContent = data ? data.status : 'No data';
+
+    renderDeviceStatus();
 }
 
 async function fetchLatest() {
@@ -591,9 +772,10 @@ async function loadDashboardSeries() {
     const ids = ['chartDashPower', 'chartDashVA'];
     if (!state.charts.dashPower.data.labels.length) ids.forEach((id) => setChartState(id, 'Loading chart'));
     try {
-        const { data } = await apiGet('series', { panel_id: panelId, range: '24h' });
+        const { data, summary } = await apiGet('series', { panel_id: panelId, range: '24h' });
         if (panelId !== state.panelId) return;
 
+        renderEnergySummary(summary);
         const labels = data.map((point) => seriesLabel(point.t, '24h'));
         state.charts.dashPower.data.labels = labels;
         state.charts.dashPower.data.datasets[0].data = data.map((point) => point.power);
@@ -602,7 +784,10 @@ async function loadDashboardSeries() {
 
         ids.forEach((id) => setChartState(id, data.length ? '' : 'No readings in the last 24 hours'));
     } catch (error) {
-        if (panelId === state.panelId) ids.forEach((id) => setChartState(id, 'Could not load this chart. It will retry shortly.'));
+        if (panelId === state.panelId) {
+            ids.forEach((id) => setChartState(id, 'Could not load this chart. It will retry shortly.'));
+            renderEnergySummary(null);
+        }
         console.error('Could not load the dashboard charts:', error);
     }
 }
@@ -665,6 +850,7 @@ function renderFirmware() {
         list.innerHTML = '<div class="text-muted small">Firmware versions are unavailable right now.</div>';
         setText('trk-firmware', '--');
         setText('trk-firmware-note', 'Unavailable');
+        renderDeviceStatus();
         return;
     }
 
@@ -688,6 +874,8 @@ function renderFirmware() {
     }).join('');
 
     if (info.repo_url) byId('firmware-repo-link').href = info.repo_url;
+
+    renderDeviceStatus();
 
     const current = info.data[state.panelId] || { state: 'unknown' };
     setText('trk-firmware', formatVersion(current.installed));
@@ -718,8 +906,10 @@ async function loadWeather() {
             setText('dash-irradiance', '--');
             icon.textContent = 'cloud';
             byId('weather-desc').title = data ? `Last recorded ${formatDateTime(data.observed_at)} WITA` : 'No weather recorded yet';
+            renderWeatherDetails(null, data ? `Last recorded ${formatDateTime(data.observed_at)} WITA` : 'No weather recorded yet');
             return;
         }
+        renderWeatherDetails(data, `Recorded ${formatDateTime(data.observed_at)} WITA`);
         setText('weather-desc', data.description);
         setText('weather-temp', data.temperature === null ? '' : `${data.temperature}°C`);
         setText('dash-irradiance', formatNumber(data.solar_radiation, 0));
@@ -732,6 +922,7 @@ async function loadWeather() {
         setText('weather-desc', 'Unavailable');
         setText('weather-temp', '');
         setText('dash-irradiance', '--');
+        renderWeatherDetails(null, 'Weather is unavailable right now');
         console.error('Could not load the weather:', error);
     }
 }
